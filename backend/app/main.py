@@ -15,6 +15,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
+    FileResponse,
     HTMLResponse,
     JSONResponse,
 )
@@ -190,6 +191,13 @@ async def home(request: Request):
         name="index.html",
         context=context,
     )
+
+
+@app.get(
+    "/favicon.ico", tags=["Root"], include_in_schema=False, response_class=FileResponse
+)
+async def favicon():
+    return FileResponse(join(base, "favicon.ico"))
 
 
 @app.get(
