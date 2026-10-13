@@ -79,9 +79,36 @@ The following list all commands that are often used in development. Ensure the f
   pre-commit install
   ```
 
+### **Backend**
 
+- Sync the backend environnment
+
+  ```sh
+   uv sync --directory backend
+  ```
+- Add dependencies to backend
+
+  ```sh
+  uv add --directory backend <package name>
+  ```
+
+- Remove dependencies from backend
+
+  ```sh
+  uv remove --directory backend <package name>
+  ```
+
+- Check backend outdated dependencies
+
+  ```sh
+  uv tree --directory backend --outdated --depth 1
+  ```
+
+- Run the backend API server in development mode.
+
+  ```sh
+  uv run --directory backend fastapi dev
+  ```
 ## License
 
 All rights reserved.
-
----
