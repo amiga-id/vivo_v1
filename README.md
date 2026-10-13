@@ -59,13 +59,51 @@ The following list all variables that are reads from the environment.
 **Backend** (`backend/.env`)
 
 ```dotenv
-—TBA—
+# The application name
+APP_NAME=
+# The frontend application site url
+APP_FRONTEND_URL=
+# The database connection string
+APP_DATABASE_URL=
+
+# The test database connection string
+TEST_DATABASE_URL=
+
+# System user
+APP_SYSTEM_USER_NAME=
+APP_SYSTEM_USER_EMAIL=
+APP_SYSTEM_USER_PASSWORD=
+
+# The secret key used to sign the authentication token
+JWT_SECRET_KEY=
+JWT_ALGORITHM=
+JWT_EXPIRE_MINUTES=
+
+# The AWS region to use
+AWS_REGION=
+# The AWS bearer token for authenticating with Bedrock runtime
+AWS_BEARER_TOKEN_BEDROCK=
+# The AWS model id used for conversing with Bedrock runtime
+AWS_BEDROCK_MODEL_ID=
+# The value for randomness and creativity of (LLM) output
+AWS_BEDROCK_TEMPERATURE=
+
+# A pair of credentials used to authenticate and
+# sign programmatic requests made to AWS
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+
+# A pair of identifier used for the Amazon knowledge bases
+# Retrieval-Augmented-Generation (RAG)
+AWS_KNOWLEDGE_BASE_ID=
+AWS_KNOWLEDGE_BASE_MODEL_ARN=
 ```
 
 **Frontend** (`frontend/.env`)
 
 ```dotenv
-—TBA—
+# The backend API url
+API_URL=
 ```
 
 ## Development
