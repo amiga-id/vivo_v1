@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import (
     declarative_base,
-    noload,
     sessionmaker,
 )
 
@@ -46,10 +45,8 @@ async def init_db(session: AsyncSession) -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    query = (
-        select(app.models.Account)
-        .options(noload(app.models.Account.conversations))
-        .where(app.models.Account.email == settings.APP_SYSTEM_USER_EMAIL)
+    query = select(app.models.Account).where(
+        app.models.Account.email == settings.APP_SYSTEM_USER_EMAIL
     )
     result = await session.execute(query)
     account = result.scalar_one_or_none()

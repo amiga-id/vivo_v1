@@ -22,6 +22,10 @@ from fastapi.templating import Jinja2Templates
 
 from app.api.main import router
 from app.core.config import settings
+from app.core.db import (
+    SessionLocal,
+    init_db,
+)
 from app.schemas.health import HealthResponse
 from app.schemas.response import ApiResponse, ErrorDetails
 from app.services.health import check_postgres_health
@@ -47,6 +51,17 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.APP_INIT:
+        print(" ▕  Initializing database")  # noqa: T201
+
+        try:
+            session = SessionLocal()
+            await init_db(session=session)
+        except Exception as ex:
+            print(f"Error initializing database: {ex}")  # noqa: T201
+        finally:
+            await session.close()
+
     state["start"] = time()
     yield
     state.clear()
