@@ -1,0 +1,19 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - if [ -f package-lock.json ]; then npm ci; else npm install; fi
+    build:
+      commands:
+        # Teruskan variabel lingkungan ke runtime SSR (Amplify hanya memberikannya saat build)
+        - env | grep -E '^(AUTH_SECRET|BEDROCK_REGION|BEDROCK_MODEL_ID|DEMO_MODE|DEMO_PASSWORD)=' >> .env.production || true
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
