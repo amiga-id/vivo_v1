@@ -13,7 +13,13 @@ from sqlalchemy.orm import (
 
 from app.core.config import settings
 
-engine = create_async_engine(str(settings.APP_DATABASE_URL), pool_pre_ping=True)
+engine = create_async_engine(
+    str(settings.APP_DATABASE_URL),
+    pool_pre_ping=True,
+    connect_args={
+        "statement_cache_size": 0,  # Highly recommended for production stability
+    },
+)
 
 SessionLocal = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False

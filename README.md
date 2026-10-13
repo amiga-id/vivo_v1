@@ -14,7 +14,7 @@ Intelligent VendorInvoice-to-Voucher Processing
 | [pnpm](https://pnpm.io/)                  | v12.11.2 | Node.js package manager            |
 | [PostgreSQL](https://www.postgresql.org/) | v18.6    | Relational Database                |
 
-> Version denotes the the latest version available the time of writing, may or may not work with lower version.
+_Version denotes the the latest version available the time of writing, may or may not work with lower version._
 
 ## Installation
 
@@ -34,7 +34,18 @@ Intelligent VendorInvoice-to-Voucher Processing
 
 ```
 <ROOT>/
-├─ backend/                    # Backend codes
+├─ backend/
+│  ├─ app/                     # Backend application codes
+│  │  ├─ api/                  # Backend API routers
+│  │  ├─ core/                 # Backend core codes
+│  │  ├─ schemas/              # Backend pydantic schemas
+│  │  ├─ services/             # Backend services codes
+│  │  ├─ templates/            # Backend HTML templates
+│  │  ╰─ main.py               # Backend entrypoint
+│  ├─ tests/                   # Backend test codes
+│  ├─ .env                     # Backend environment variables
+│  ├─ pyproject.toml           # Backend Project manifest
+│  ╰─ uv.lock                  # Python uv lock file
 ├─ database/                   # Database related files
 ├─ frontend/                   # Frontend codes
 ├─ .pre-commit-config.yaml     # Pre-commit configuration

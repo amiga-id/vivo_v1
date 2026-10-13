@@ -16,7 +16,7 @@ def _resolve_postgres_url(value: PostgresDsn | None) -> str | None:
     url = str(value)
     for scheme in ("postgres://", "postgresql://"):
         if url.startswith(scheme):
-            url = url.replace(scheme, "postgresql+psycopg://", 1)
+            url = url.replace(scheme, "postgresql+asyncpg://", 1)
     return url
 
 
@@ -60,12 +60,12 @@ class Settings(BaseSettings):
 
     @field_validator("APP_DATABASE_URL", mode="before")
     @classmethod
-    def _use_psycopg_driver(cls, value: str | PostgresDsn) -> str:
+    def _use_asyncpg_driver(cls, value: str | PostgresDsn) -> str:
         return _resolve_postgres_url(value)
 
     @field_validator("TEST_DATABASE_URL", mode="before")
     @classmethod
-    def _test_use_psycopg_driver(cls, value: str | PostgresDsn) -> str:
+    def _test_use_asyncpg_driver(cls, value: str | PostgresDsn) -> str:
         return _resolve_postgres_url(value)
 
 

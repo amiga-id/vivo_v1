@@ -15,6 +15,20 @@
     }
   },
 
+  "python.envFile": "${workspaceFolder}/backend/.env",
+  "python.testing.cwd": "${workspaceFolder}/backend",
+  "python.testing.pytestArgs": [
+    "tests",
+    "--no-header",
+    "--cov=app",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-config=pyproject.toml"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.useEnvironmentsExtension": false,
+
   "ruff.enable": true,
   "ruff.configuration": "${workspaceFolder}/backend/pyproject.toml"
 }
