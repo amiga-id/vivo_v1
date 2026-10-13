@@ -37,6 +37,7 @@ Intelligent VendorInvoice-to-Voucher Processing
 ├─ backend/                    # Backend codes
 ├─ database/                   # Database related files
 ├─ frontend/                   # Frontend codes
+├─ .pre-commit-config.yaml     # Pre-commit configuration
 ╰─ README.md                   # Project README
 ```
 
@@ -64,7 +65,20 @@ The following list all commands that are often used in development. Ensure the f
 
 - All commands are assumed to be run from the `<root>` project directory
 
-> —TBA—
+### Workspace
+
+- Clone the Amiga VIVO git repository to local folder.
+
+  ```sh
+  git clone https://github.com/amiga-ai/vivo.git
+  ```
+
+- Install `pre-commit`to git hooks
+
+  ```sh
+  pre-commit install
+  ```
+
 
 ## License
 
