@@ -70,6 +70,7 @@ class AccountUpdateRequest(BaseModel):
 class AccountResponse(BaseModel):
     id: str
     name: str
+    role: str
     email: str
     email_verified: bool
     phone_number: str | None

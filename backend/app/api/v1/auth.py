@@ -12,6 +12,7 @@ from app.core.db import get_db
 from app.core.sid import from_uuid
 from app.models.account import Account
 from app.schemas.auth import (
+    AccountFilterRequest,
     AccountResponse,
     AccountUpdateRequest,
     LoginRequest,
@@ -19,11 +20,17 @@ from app.schemas.auth import (
     RegisterRequest,
     RegisterResponse,
 )
-from app.schemas.response import ApiResponse
+from app.schemas.response import (
+    ApiResponse,
+    PageDetails,
+    PagedRequest,
+    PagedResponse,
+)
 from app.services.auth import (
     AuthenticationError,
     create_account,
     current_account,
+    filter_accounts,
     find_account,
     from_account,
     login_account,
@@ -117,6 +124,37 @@ async def logout(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
+
+
+@router.post(
+    "/accounts",
+    status_code=status.HTTP_200_OK,
+    response_model=PagedResponse[AccountResponse],
+    response_model_exclude_none=True,
+)
+async def list_accounts(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[Account, Depends(current_account)],
+    request: PagedRequest[AccountFilterRequest] | None = None,
+):
+    try:
+        if not current_user.is_admin:
+            raise AuthenticationError("Unauthorized")
+
+        page = (request and request.page) or PageDetails(index=1, size=10)
+        [accounts, page.total] = await filter_accounts(session, request)
+
+        if accounts is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Account does not exist: {id}",
+            )
+
+        return PagedResponse[AccountResponse](success=True, page=page, data=accounts)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
 
 

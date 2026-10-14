@@ -94,6 +94,7 @@ def from_account(entry: Account) -> AccountResponse:
     return AccountResponse(
         id=from_uuid(entry.id),
         name=entry.name,
+        role=entry.role,
         email=entry.email,
         email_verified=entry.email_verified,
         phone_number=entry.phone_number,
