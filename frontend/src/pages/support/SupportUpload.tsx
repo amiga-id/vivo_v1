@@ -6,3 +6,4 @@ export default function SupportUpload() {
   if (loading || !user) return <div className="loading">Loading...</div>;
   return <UploadForm user={user} home="/support" />;
 }
+

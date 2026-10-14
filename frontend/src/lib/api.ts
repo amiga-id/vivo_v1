@@ -1,12 +1,7 @@
-/**
- * api.ts – thin adapter that wraps services.ts for use inside React components.
- * All calls are synchronous (services.ts operates on the in-memory store).
- * Replace with fetch() calls when wiring to a real backend.
- */
 import * as svc from './services';
 import type {
-  ActionResult, ClientSummary, DocSummary, FieldKey, RoleKey,
-  TaxDoc, TaxLine, User, VoucherData, WorkloadRow,
+  ActionResult, Assignment, ClientSummary, DocSummary,
+  FieldKey, RoleKey, TaxDoc, TaxLine, User, VoucherData, WorkloadRow,
 } from './types';
 
 const ok  = (msg: string): ActionResult => ({ ok: true,  msg });
@@ -20,131 +15,79 @@ export function signIn(email: string, pw: string): { ok: boolean; msg: string; u
 }
 
 /* ── Queue ── */
-export function getQueue(user: User): DocSummary[] {
-  return svc.queueFor(user);
-}
-
-export function getWorkload(user: User): WorkloadRow[] {
-  return svc.workloadFor(user);
-}
+export function getQueue(user: User): DocSummary[]  { return svc.queueFor(user); }
+export function getWorkload(user: User): WorkloadRow[] { return svc.workloadFor(user); }
 
 /* ── Finance review ── */
-export function getDocForReview(user: User, id: string) {
-  return svc.getDocForReview(user, id);
-}
+export function getDocForReview(user: User, id: string) { return svc.getDocForReview(user, id); }
 
 export function correctField(user: User, id: string, k: FieldKey, raw: string): ActionResult {
-  try { return ok(svc.correctField(user, id, k, raw)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.correctField(user, id, k, raw)); } catch (e) { return err(e); }
+}
+export function decideDoc(user: User, id: string, kind: 'approve' | 'reject' | 'return', why: string): ActionResult {
+  try { return ok(svc.decide(user, id, kind, why)); } catch (e) { return err(e); }
 }
 
-export function decideDoc(
-  user: User,
-  id: string,
-  kind: 'approve' | 'reject' | 'return',
-  why: string,
-): ActionResult {
-  try { return ok(svc.decide(user, id, kind, why)); }
-  catch (e) { return err(e); }
-}
-
-/* ── Tax setup ── */
-export function getTaxDoc(user: User, id: string): TaxDoc {
-  return svc.getTaxDoc(user, id);
-}
-
+/* ── Tax ── */
+export function getTaxDoc(user: User, id: string): TaxDoc { return svc.getTaxDoc(user, id); }
 export function setTax(user: User, id: string, raw: Partial<TaxLine>[], approvers: 1 | 2): ActionResult {
-  try { return ok(svc.setTax(user, id, raw, approvers)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.setTax(user, id, raw, approvers)); } catch (e) { return err(e); }
 }
 
 /* ── Fix / resubmit ── */
-export function getFixDoc(user: User, id: string) {
-  return svc.getFixDoc(user, id);
-}
-
+export function getFixDoc(user: User, id: string) { return svc.getFixDoc(user, id); }
 export function correctFixField(user: User, id: string, k: FieldKey, raw: string): ActionResult {
-  try { return ok(svc.correctFixField(user, id, k, raw)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.correctFixField(user, id, k, raw)); } catch (e) { return err(e); }
 }
-
 export function resubmit(user: User, id: string, note: string): ActionResult {
-  try { return ok(svc.resubmit(user, id, note)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.resubmit(user, id, note)); } catch (e) { return err(e); }
 }
 
 /* ── Voucher ── */
-export function getVouchers(user: User): DocSummary[] {
-  return svc.vouchersFor(user);
-}
-
-export function getVoucher(user: User, id: string): VoucherData {
-  return svc.getVoucher(user, id);
-}
-
+export function getVouchers(user: User): DocSummary[]       { return svc.vouchersFor(user); }
+export function getVoucher(user: User, id: string): VoucherData { return svc.getVoucher(user, id); }
 export function downloadVoucher(user: User, id: string): ActionResult {
-  try { return ok(svc.recordDownload(user, id)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.recordDownload(user, id)); } catch (e) { return err(e); }
 }
 
 /* ── Upload ── */
-export function getKlienOptions(user: User): string[] {
-  return svc.klienOptions(user);
-}
-
-export function getPicOptions(): { id: string; name: string }[] {
-  return svc.picOptions();
-}
-
-export function uploadDocument(user: User, p: svc.UploadInput): ActionResult {
+export function getKlienOptions(user: User): string[]       { return svc.klienOptions(user); }
+export function uploadDocument(user: User, p: svc.UploadInput): ActionResult & { docId?: string } {
   try {
-    svc.createDoc(user, p);
-    return ok('Dokumen terkirim. Robot Admin sedang memproses, tunggu 2-3 detik.');
-  } catch (e) { return err(e); }
+    const doc = svc.createDoc(user, p);
+    return { ok: true, msg: 'Dokumen terkirim. Robot Admin sedang memproses...', docId: doc.id };
+  } catch (e) { return { ...err(e) }; }
 }
 
-/* ── Workload ── */
+/* ── Workload / Lead ── */
 export function reassignTask(user: User, id: string, to: string): ActionResult {
-  try { return ok(svc.reassign(user, id, to)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.reassign(user, id, to)); } catch (e) { return err(e); }
+}
+export function getAssignments(user: User): Assignment[]    { return svc.getAssignments(user); }
+export function setAssignment(user: User, supportId: string, klien: string[]): ActionResult {
+  try { return ok(svc.setAssignment(user, supportId, klien)); } catch (e) { return err(e); }
 }
 
 /* ── Clients ── */
-export function getClients(user: User): ClientSummary[] {
-  return svc.clientsFor(user);
-}
-
+export function getClients(user: User): ClientSummary[]     { return svc.clientsFor(user); }
 export function addClient(user: User, name: string): ActionResult {
-  try { return ok(svc.addClient(user, name)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.addClient(user, name)); } catch (e) { return err(e); }
 }
 
 /* ── Users ── */
-export function getUsers(user: User): User[] {
-  return svc.usersFor(user);
-}
-
+export function getUsers(user: User): User[]                { return svc.usersFor(user); }
 export function setRole(user: User, uid: string, role: RoleKey): ActionResult {
-  try { return ok(svc.setRole(user, uid, role)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.setRole(user, uid, role)); } catch (e) { return err(e); }
 }
-
 export function register(f: { name: string; email: string; role: RoleKey; pw: string; pw2: string }): ActionResult {
-  try { return ok(svc.register(f)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.register(f)); } catch (e) { return err(e); }
 }
-
 export function createUser(user: User, f: { name: string; email: string; role: RoleKey; pw: string }): ActionResult {
-  try { return ok(svc.createUser(user, f)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.createUser(user, f)); } catch (e) { return err(e); }
 }
-
 export function decideAccess(user: User, id: string, approved: boolean, role?: RoleKey): ActionResult {
-  try { return ok(svc.decideAccess(user, id, approved, role)); }
-  catch (e) { return err(e); }
+  try { return ok(svc.decideAccess(user, id, approved, role)); } catch (e) { return err(e); }
 }
 
 /* ── Audit ── */
-export function getAudit(user: User) {
-  return svc.auditFor(user);
-}
+export function getAudit(user: User) { return svc.auditFor(user); }
