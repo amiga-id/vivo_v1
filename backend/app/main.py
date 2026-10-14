@@ -15,6 +15,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
+    FileResponse,
     HTMLResponse,
     JSONResponse,
 )
@@ -22,8 +23,13 @@ from fastapi.templating import Jinja2Templates
 
 from app.api.main import router
 from app.core.config import settings
+from app.core.db import (
+    SessionLocal,
+    init_db,
+)
 from app.schemas.health import HealthResponse
 from app.schemas.response import ApiResponse, ErrorDetails
+from app.services.auth import AuthenticationError
 from app.services.health import check_postgres_health
 
 # safety check to prevent obscure runtime errors later
@@ -47,6 +53,17 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.APP_INIT:
+        print(" ▕  Initializing database")  # noqa: T201
+
+        try:
+            session = SessionLocal()
+            await init_db(session=session)
+        except Exception as ex:
+            print(f"Error initializing database: {ex}")  # noqa: T201
+        finally:
+            await session.close()
+
     state["start"] = time()
     yield
     state.clear()
@@ -125,6 +142,27 @@ async def custom_validation_exception_handler(
     )
 
 
+@app.exception_handler(AuthenticationError)
+async def custom_authentication_exception_handler(
+    request: Request, exc: AuthenticationError
+):
+    error = (
+        exc
+        if isinstance(exc, ErrorDetails)
+        else ErrorDetails(
+            code=status.HTTP_401_UNAUTHORIZED,
+            message=str(exc),
+        )
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content=jsonable_encoder(
+            ApiResponse[None](success=False, error=error, excelude_none=True)
+        ),
+    )
+
+
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
     error = (
@@ -175,6 +213,13 @@ async def home(request: Request):
         name="index.html",
         context=context,
     )
+
+
+@app.get(
+    "/favicon.ico", tags=["Root"], include_in_schema=False, response_class=FileResponse
+)
+async def favicon():
+    return FileResponse(join(base, "favicon.ico"))
 
 
 @app.get(
