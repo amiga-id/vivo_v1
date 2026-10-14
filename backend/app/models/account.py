@@ -1,5 +1,6 @@
 import uuid
 from enum import StrEnum
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
     UUID,
@@ -13,10 +14,15 @@ from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
+    relationship,
 )
 from sqlalchemy.sql import func
 
 from app.core.db import Base
+
+if TYPE_CHECKING:
+    # Make sure this path points exactly to your vendor module
+    from .vendor import Vendor
 
 
 class AccountRole(StrEnum):
@@ -56,6 +62,12 @@ class Account(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    vendors: Mapped[list[Optional["Vendor"]]] = relationship(  # noqa: F821, UP037, UP045
+        "Vendor",
+        back_populates="account",
+        lazy="selectin",  # Optimized for 1:N loading in SQLAlchemy 2.0
+    )
 
     @property
     def is_admin(self):
