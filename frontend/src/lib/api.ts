@@ -1,127 +1,150 @@
 /**
- * API client untuk menggantikan Next.js Server Actions
- * Semua komunikasi dengan backend melalui fetch API
+ * api.ts – thin adapter that wraps services.ts for use inside React components.
+ * All calls are synchronous (services.ts operates on the in-memory store).
+ * Replace with fetch() calls when wiring to a real backend.
  */
+import * as svc from './services';
+import type {
+  ActionResult, ClientSummary, DocSummary, FieldKey, RoleKey,
+  TaxDoc, TaxLine, User, VoucherData, WorkloadRow,
+} from './types';
 
-import type { ActionResult, FieldKey, RoleKey } from './types';
+const ok  = (msg: string): ActionResult => ({ ok: true,  msg });
+const err = (e: unknown): ActionResult  => ({ ok: false, msg: e instanceof Error ? e.message : String(e) });
 
-const API_BASE = '/api';
-
-async function fetchAPI<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    credentials: 'include', // Include cookies for session
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ msg: 'Network error' }));
-    throw new Error(error.msg || `HTTP ${response.status}`);
-  }
-
-  return response.json();
+/* ── Auth ── */
+export function signIn(email: string, pw: string): { ok: boolean; msg: string; user?: User } {
+  const r = svc.authenticate(email, pw);
+  if (r.ok) return { ok: true, msg: 'Berhasil masuk.', user: r.user };
+  return { ok: false, msg: r.msg };
 }
 
-async function fetchWithFormData(endpoint: string, formData: FormData): Promise<ActionResult> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'POST',
-    body: formData,
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ msg: 'Network error' }));
-    throw new Error(error.msg || `HTTP ${response.status}`);
-  }
-
-  return response.json();
+/* ── Queue ── */
+export function getQueue(user: User): DocSummary[] {
+  return svc.queueFor(user);
 }
 
-/* ---- Sesi ---- */
-export async function signIn(email: string, password: string): Promise<{ ok: boolean; msg: string; to?: string }> {
-  return fetchAPI('/auth/signin', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
+export function getWorkload(user: User): WorkloadRow[] {
+  return svc.workloadFor(user);
 }
 
-export async function logout(): Promise<void> {
-  await fetchAPI('/auth/logout', { method: 'POST' });
-  window.location.href = '/';
+/* ── Finance review ── */
+export function getDocForReview(user: User, id: string) {
+  return svc.getDocForReview(user, id);
 }
 
-/* ---- Finance Reviewer ---- */
-export async function correctField(id: string, k: FieldKey, raw: string): Promise<ActionResult> {
-  return fetchAPI('/finance/correct-field', {
-    method: 'POST',
-    body: JSON.stringify({ id, k, raw }),
-  });
+export function correctField(user: User, id: string, k: FieldKey, raw: string): ActionResult {
+  try { return ok(svc.correctField(user, id, k, raw)); }
+  catch (e) { return err(e); }
 }
 
-export async function decideDoc(id: string, kind: 'approve' | 'reject' | 'reqinfo', why: string): Promise<ActionResult> {
-  return fetchAPI('/finance/decide', {
-    method: 'POST',
-    body: JSON.stringify({ id, kind, why }),
-  });
+export function decideDoc(
+  user: User,
+  id: string,
+  kind: 'approve' | 'reject' | 'return',
+  why: string,
+): ActionResult {
+  try { return ok(svc.decide(user, id, kind, why)); }
+  catch (e) { return err(e); }
 }
 
-/* ---- Intake Support ---- */
-export async function downloadVoucher(id: string): Promise<ActionResult> {
-  return fetchAPI('/support/download-voucher', {
-    method: 'POST',
-    body: JSON.stringify({ id }),
-  });
+/* ── Tax setup ── */
+export function getTaxDoc(user: User, id: string): TaxDoc {
+  return svc.getTaxDoc(user, id);
 }
 
-export async function fixDocument(docId: string, formData: FormData): Promise<ActionResult> {
-  return fetchWithFormData('/support/fix-document', formData);
+export function setTax(user: User, id: string, raw: Partial<TaxLine>[], approvers: 1 | 2): ActionResult {
+  try { return ok(svc.setTax(user, id, raw, approvers)); }
+  catch (e) { return err(e); }
 }
 
-export async function uploadDocument(formData: FormData): Promise<ActionResult> {
-  return fetchWithFormData('/support/upload-document', formData);
+/* ── Fix / resubmit ── */
+export function getFixDoc(user: User, id: string) {
+  return svc.getFixDoc(user, id);
 }
 
-/* ---- Service Lead ---- */
-export async function reassignTask(id: string, to: string): Promise<ActionResult> {
-  return fetchAPI('/lead/reassign', {
-    method: 'POST',
-    body: JSON.stringify({ id, to }),
-  });
+export function correctFixField(user: User, id: string, k: FieldKey, raw: string): ActionResult {
+  try { return ok(svc.correctFixField(user, id, k, raw)); }
+  catch (e) { return err(e); }
 }
 
-/* ---- System Admin ---- */
-export async function changeRole(uid: string, role: RoleKey): Promise<ActionResult> {
-  return fetchAPI('/admin/change-role', {
-    method: 'POST',
-    body: JSON.stringify({ uid, role }),
-  });
+export function resubmit(user: User, id: string, note: string): ActionResult {
+  try { return ok(svc.resubmit(user, id, note)); }
+  catch (e) { return err(e); }
 }
 
-export async function toggleDelegation(id: string): Promise<ActionResult> {
-  return fetchAPI('/admin/toggle-delegation', {
-    method: 'POST',
-    body: JSON.stringify({ id }),
-  });
+/* ── Voucher ── */
+export function getVouchers(user: User): DocSummary[] {
+  return svc.vouchersFor(user);
 }
 
-export async function decideAccessRequest(id: string, ok: boolean): Promise<ActionResult> {
-  return fetchAPI('/admin/decide-access', {
-    method: 'POST',
-    body: JSON.stringify({ id, ok }),
-  });
+export function getVoucher(user: User, id: string): VoucherData {
+  return svc.getVoucher(user, id);
 }
 
-export async function addNewClient(formData: FormData): Promise<ActionResult> {
-  return fetchWithFormData('/admin/add-client', formData);
+export function downloadVoucher(user: User, id: string): ActionResult {
+  try { return ok(svc.recordDownload(user, id)); }
+  catch (e) { return err(e); }
 }
 
-/* ---- Uji kebijakan ---- */
-export async function runProbe(index: number): Promise<{ ok: boolean; why?: string; label: string }> {
-  return fetchAPI('/probe/run', {
-    method: 'POST',
-    body: JSON.stringify({ index }),
-  });
+/* ── Upload ── */
+export function getKlienOptions(user: User): string[] {
+  return svc.klienOptions(user);
+}
+
+export function getPicOptions(): { id: string; name: string }[] {
+  return svc.picOptions();
+}
+
+export function uploadDocument(user: User, p: svc.UploadInput): ActionResult {
+  try {
+    svc.createDoc(user, p);
+    return ok('Dokumen terkirim. Robot Admin sedang memproses, tunggu 2-3 detik.');
+  } catch (e) { return err(e); }
+}
+
+/* ── Workload ── */
+export function reassignTask(user: User, id: string, to: string): ActionResult {
+  try { return ok(svc.reassign(user, id, to)); }
+  catch (e) { return err(e); }
+}
+
+/* ── Clients ── */
+export function getClients(user: User): ClientSummary[] {
+  return svc.clientsFor(user);
+}
+
+export function addClient(user: User, name: string): ActionResult {
+  try { return ok(svc.addClient(user, name)); }
+  catch (e) { return err(e); }
+}
+
+/* ── Users ── */
+export function getUsers(user: User): User[] {
+  return svc.usersFor(user);
+}
+
+export function setRole(user: User, uid: string, role: RoleKey): ActionResult {
+  try { return ok(svc.setRole(user, uid, role)); }
+  catch (e) { return err(e); }
+}
+
+export function register(f: { name: string; email: string; role: RoleKey; pw: string; pw2: string }): ActionResult {
+  try { return ok(svc.register(f)); }
+  catch (e) { return err(e); }
+}
+
+export function createUser(user: User, f: { name: string; email: string; role: RoleKey; pw: string }): ActionResult {
+  try { return ok(svc.createUser(user, f)); }
+  catch (e) { return err(e); }
+}
+
+export function decideAccess(user: User, id: string, approved: boolean, role?: RoleKey): ActionResult {
+  try { return ok(svc.decideAccess(user, id, approved, role)); }
+  catch (e) { return err(e); }
+}
+
+/* ── Audit ── */
+export function getAudit(user: User) {
+  return svc.auditFor(user);
 }

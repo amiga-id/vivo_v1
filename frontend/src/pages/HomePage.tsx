@@ -1,39 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LoginForm from '@/components/LoginForm';
 import Icon from '@/components/Icon';
 import { Brand } from '@/components/ui';
 import { ROLE_LABEL } from '@/lib/constants';
-import { getUser, homeOf } from '@/lib/session';
+import { useSession, homeOf } from '@/lib/session';
 import { store } from '@/lib/store';
 
 export default function HomePage() {
+  const { user, loading } = useSession();
   const navigate = useNavigate();
-  const [demo, setDemo] = useState<{ password: string; accounts: Array<{ name: string; role: string; email: string }> } | null>(null);
 
+  // Redirect if already logged in
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const u = await getUser();
-      if (u) {
-        navigate(homeOf(u.role), { replace: true });
-      }
-    };
-    checkUser();
-
-    // Setup demo accounts
-    const demoMode = import.meta.env.VITE_DEMO_MODE || 'on';
-    if (demoMode !== 'off') {
-      setDemo({
-        password: import.meta.env.VITE_DEMO_PASSWORD || 'amiga2026',
-        accounts: store.users.map((x) => ({ 
-          name: x.name, 
-          role: ROLE_LABEL[x.role], 
-          email: `${x.id}@amiga.demo` 
-        })),
-      });
+    if (!loading && user) {
+      navigate(homeOf(user.role), { replace: true });
     }
-  }, [navigate]);
+  }, [user, loading, navigate]);
+
+  if (loading) return <div className="loading">Loading...</div>;
+
+  // Build demo accounts from store
+  const demoMode = (import.meta.env.VITE_DEMO_MODE as string | undefined) ?? 'on';
+  const demo = demoMode !== 'off' ? {
+    password: (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? 'amiga2026',
+    accounts: store.users
+      .filter(u => u.status === 'Aktif')
+      .map(u => ({ name: u.name, role: ROLE_LABEL[u.role], email: u.email })),
+  } : null;
 
   return (
     <div className="auth">
@@ -46,9 +40,18 @@ export default function HomePage() {
           </p>
         </div>
         <ul className="auth-points">
-          <li><Icon name="lock" size={18} /><span>Setiap peran hanya melihat data yang menjadi tanggung jawabnya.</span></li>
-          <li><Icon name="audit" size={18} /><span>Semua tindakan tercatat lengkap dengan pelaku dan waktunya.</span></li>
-          <li><Icon name="voucher" size={18} /><span>Voucher terbuka hanya setelah disetujui Finance Reviewer.</span></li>
+          <li>
+            <Icon name="lock" size={18} />
+            <span>Setiap peran hanya melihat data yang menjadi tanggung jawabnya.</span>
+          </li>
+          <li>
+            <Icon name="audit" size={18} />
+            <span>Semua tindakan tercatat lengkap dengan pelaku dan waktunya.</span>
+          </li>
+          <li>
+            <Icon name="voucher" size={18} />
+            <span>Voucher hanya terbit setelah disetujui Finance Reviewer. Dokumen bermasalah dikembalikan ke Intake Support.</span>
+          </li>
         </ul>
       </section>
       <section className="auth-panel">

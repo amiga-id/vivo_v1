@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AMIGA Intake: ruang kerja per peran</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --pink:#ee9db9; --pink-deep:#b84f7a; --pink-soft:#fbe9f0; --blush:#fef8fa;
+  --teal:#308087; --teal-deep:#256a70; --teal-soft:#e4f1f0;
+  --on-teal:#ffffff; --on-pink:#ffffff;
+  --ink:#2a3540; --muted:#667580; --line:#eddde5; --surface:#ffffff; --bg:#fbf6f8;
+  --ok:#2d8660; --ok-soft:#e3f3ea; --warn:#9a6400; --warn-soft:#fbf0d8; --err:#bf4660; --err-soft:#fbe6ea;
+  --hero-from:#fde6ee; --hero-to:#e6f2f1; --hero-ink:#3a2a35; --hero-sub:#5b4a55;
+  --hero-chip:rgba(255,255,255,.65); --hero-chip-line:rgba(184,79,122,.22);
+  --shadow:rgba(110,80,100,.22);
+  --r-lg:22px; --r-md:14px; --r-sm:9px;
+  --font:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --script:'Pacifico','Brush Script MT',cursive;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --pink:#e394b3; --pink-deep:#f1abc6; --pink-soft:#3b2832; --blush:#1d1820;
+    --teal:#62b4ba; --teal-deep:#8ad0d4; --teal-soft:#193436;
+    --on-teal:#0f2a2c; --on-pink:#3a1527;
+    --ink:#eee8f0; --muted:#aea3b5; --line:#382e41; --surface:#241e2b; --bg:#1b161f;
+    --ok:#59c99b; --ok-soft:#183a2e; --warn:#eab04a; --warn-soft:#3b3015; --err:#f0899f; --err-soft:#432430;
+    --hero-from:#33242f; --hero-to:#1f2d33; --hero-ink:#f6eef2; --hero-sub:#cfc2cc;
+    --hero-chip:rgba(255,255,255,.08); --hero-chip-line:rgba(255,255,255,.18);
+    --shadow:rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --pink:#e394b3; --pink-deep:#f1abc6; --pink-soft:#3b2832; --blush:#1d1820;
+  --teal:#62b4ba; --teal-deep:#8ad0d4; --teal-soft:#193436;
+  --on-teal:#0f2a2c; --on-pink:#3a1527;
+  --ink:#eee8f0; --muted:#aea3b5; --line:#382e41; --surface:#241e2b; --bg:#1b161f;
+  --ok:#59c99b; --ok-soft:#183a2e; --warn:#eab04a; --warn-soft:#3b3015; --err:#f0899f; --err-soft:#432430;
+  --hero-from:#33242f; --hero-to:#1f2d33; --hero-ink:#f6eef2; --hero-sub:#cfc2cc;
+  --hero-chip:rgba(255,255,255,.08); --hero-chip-line:rgba(255,255,255,.18);
+  --shadow:rgba(0,0,0,.4);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px;border-radius:6px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1140px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand .word{font-family:var(--script);font-size:28px;line-height:1;color:var(--teal)}
+.brand small{color:var(--muted);font-size:13px;font-weight:500;padding-left:10px;border-left:2px solid var(--pink)}
+.me{display:flex;align-items:center;gap:10px}
+.av{width:34px;height:34px;border-radius:50%;background:var(--pink-soft);color:var(--pink-deep);display:grid;place-items:center;font-weight:700}
+.me b{display:block;line-height:1.2}
+.me span.r{font-size:12.5px;color:var(--teal-deep);font-weight:600}
+
+.hero{background:linear-gradient(135deg,var(--hero-from) 0%,var(--hero-to) 100%);color:var(--hero-ink);padding:38px 20px 76px;border-bottom:1px solid var(--line)}
+.hero-in{max-width:1140px;margin:0 auto}
+.hero h1{margin:0 0 8px;font-size:clamp(26px,4.2vw,40px);line-height:1.15;font-weight:700;letter-spacing:-.01em;max-width:22ch}
+.hero p{margin:0;max-width:64ch;font-size:16px;color:var(--hero-sub)}
+.scope{margin-top:16px;display:inline-flex;gap:10px;align-items:flex-start;background:var(--hero-chip);border:1px solid var(--hero-chip-line);padding:9px 14px;border-radius:var(--r-md);font-size:14px;max-width:72ch}
+
+main{max-width:1140px;margin:-48px auto 0;padding:0 20px 56px;position:relative}
+.tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:6px;overflow-x:auto;box-shadow:0 10px 30px -18px var(--shadow)}
+.tabs button{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;padding:11px 18px;border-radius:calc(var(--r-lg) - 6px);cursor:pointer;font-weight:500;color:var(--muted);white-space:nowrap}
+.tabs button:hover{background:var(--pink-soft);color:var(--ink)}
+.tabs button[aria-current="page"]{background:var(--teal);color:var(--on-teal);font-weight:600}
+.tabs svg{width:17px;height:17px;flex:none}
+.screen{margin-top:20px;display:grid;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px}
+.card h2{margin:0 0 4px;font-size:19px;font-weight:700}
+.card h2::after{content:"";display:block;width:34px;height:3px;border-radius:3px;background:var(--pink);margin-top:8px}
+.card .sub{color:var(--muted);margin:10px 0 16px;font-size:14px}
+.m{color:var(--muted);font-size:13px}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;display:grid;gap:2px}
+.kpi b{font-size:30px;line-height:1.1;font-weight:700}
+.kpi span{color:var(--muted);font-size:14px}
+.kpi.warn b{color:var(--err)} .kpi.good b{color:var(--teal)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.chip{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:5px 13px;font-size:13.5px;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--pink-soft);border-color:var(--pink);color:var(--ink);font-weight:600}
+select,input[type=text],input[type=date],textarea{width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:9px 12px}
+select.inline{width:auto;padding:6px 10px}
+select:hover,input:hover,textarea:hover{border-color:var(--pink)}
+input:disabled{opacity:.6}
+
+.queue{display:grid;gap:10px}
+.q{display:grid;grid-template-columns:1.7fr 1.2fr 1fr 1fr 1.1fr auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:var(--r-md);padding:12px 16px}
+.q:hover{border-color:var(--pink)}
+.q .t{font-weight:600}
+.q .issue{font-size:13px;color:var(--err);display:flex;gap:6px;align-items:flex-start}
+.q .none{color:var(--muted);font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;font-size:13px;font-weight:600;background:var(--teal-soft);color:var(--teal-deep)}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.badge.s-Perlu,.badge.s-Dikembalikan,.badge.s-Ditolak,.badge.s-Konflik{background:var(--err-soft);color:var(--err)}
+.badge.s-Diproses,.badge.s-Menunggu{background:var(--warn-soft);color:var(--warn)}
+.badge.s-Disetujui,.badge.s-Aktif{background:var(--ok-soft);color:var(--ok)}
+.badge.s-Dicabut{background:var(--err-soft);color:var(--err)}
+.due.late{color:var(--err);font-weight:600} .due.today{color:var(--warn);font-weight:600} .due{font-size:13.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-deep);padding:8px 18px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--teal-soft)}
+.btn.primary{background:var(--teal);color:var(--on-teal)}
+.btn.primary:hover:not(:disabled){background:var(--teal-deep)}
+.btn.pink{background:var(--pink-deep);border-color:var(--pink-deep);color:var(--on-pink)}
+.btn.danger{border-color:var(--err);color:var(--err)}
+.btn.danger:hover:not(:disabled){background:var(--err-soft)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:5px 14px;font-size:14px}
+.lock{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.step{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.step i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:13px;border:2px solid var(--line)}
+.step.done i{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.step.now i{border-color:var(--pink-deep);color:var(--pink-deep)}
+.step.now{color:var(--ink);font-weight:600}
+.drop{display:grid;place-items:center;text-align:center;gap:6px;border:2px dashed var(--pink);background:var(--blush);border-radius:var(--r-lg);padding:34px 18px;cursor:pointer;transition:background .2s,border-color .2s}
+.drop:hover,.drop.over{background:var(--pink-soft);border-color:var(--pink-deep)}
+.drop b{font-size:17px} .drop span{color:var(--muted);font-size:14px}
+.drop.has{border-style:solid;border-color:var(--teal);background:var(--teal-soft)}
+.form{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 18px}
+.form label{display:grid;gap:6px;font-weight:600;font-size:14px}
+.form .full{grid-column:1/-1}
+.form small{font-weight:400;color:var(--muted)}
+.err-t{color:var(--err);font-size:13px;font-weight:500}
+.delegate{display:flex;gap:8px;align-items:center;background:var(--teal-soft);color:var(--teal-deep);border-radius:var(--r-sm);padding:8px 12px;font-size:13.5px}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.pane-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.pane-h h2{margin:0}
+.paper{background:#fff;color:#2b2b2b;border:1px solid #e4d6dd;border-radius:6px;padding:26px 26px 22px;box-shadow:0 14px 34px -22px rgba(0,0,0,.45);font-size:13.5px;position:relative}
+.paper h3{margin:0;font-size:22px;letter-spacing:.02em}
+.paper .row2{display:flex;justify-content:space-between;gap:12px;margin:3px 0;padding:3px 6px;border-radius:5px;transition:background .15s}
+.paper .row2 span:first-child{color:#777}
+.paper .row2.hl{background:#fbeab0}
+.paper hr{border:0;border-top:1px solid #e6e6e6;margin:12px 0}
+.paper table{width:100%;border-collapse:collapse;margin:6px 0}
+.paper th,.paper td{text-align:left;padding:5px 6px;border-bottom:1px solid #eee}
+.paper td:last-child,.paper th:last-child{text-align:right}
+.fld{display:grid;gap:5px;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--r-md);margin-bottom:9px;border-left-width:5px}
+.fld.ok{border-left-color:var(--ok)} .fld.warn{border-left-color:var(--warn)} .fld.err{border-left-color:var(--err);background:var(--err-soft)}
+.fld .lbl{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600}
+.fld .lbl em{font-style:normal;font-weight:500;color:var(--muted)}
+.fld .msg{font-size:12.5px;display:flex;gap:6px;align-items:center}
+.fld.ok .msg{color:var(--ok)} .fld.warn .msg{color:var(--warn)} .fld.err .msg{color:var(--err)}
+.sumbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pill{border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.err{background:var(--err-soft);color:var(--err)}
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-md);padding:12px 14px;font-size:14px;margin-bottom:14px}
+.banner.block{background:var(--err-soft);color:var(--err)} .banner.info{background:var(--teal-soft);color:var(--teal-deep)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.reason{margin:10px 0 0}
+.reason label{font-weight:600;font-size:14px;display:grid;gap:6px}
+
+.voucher{max-width:620px;margin:0 auto;width:100%}
+.voucher .paper{padding:34px 34px 28px;overflow:hidden}
+.mark{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.mark span{font-size:92px;font-weight:700;color:rgba(184,79,122,.1);transform:rotate(-22deg);letter-spacing:.06em}
+.vhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.vhead .word{font-family:var(--script);font-size:30px;color:#308087}
+.limit{margin-top:16px;border:1.5px dashed #d99ab4;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#7a3550;background:#fff6f9}
+.sig{display:flex;justify-content:space-between;gap:20px;margin-top:22px;font-size:12.5px;color:#666}
+.sig div{flex:1;border-top:1px solid #bbb;padding-top:5px;text-align:center}
+
+.tl{list-style:none;margin:0;padding:0 0 0 18px;border-left:3px solid var(--pink-soft);display:grid;gap:14px}
+.tl li{position:relative;padding-left:16px}
+.tl li::before{content:"";position:absolute;left:-27px;top:6px;width:13px;height:13px;border-radius:50%;background:var(--surface);border:3px solid var(--teal)}
+.tl li.bot::before{border-color:var(--pink-deep)} .tl li.sec::before{border-color:var(--err)}
+.tl .when{font-size:12.5px;color:var(--muted)} .tl .what{font-weight:600} .tl .det{font-size:14px;color:var(--muted)}
+.empty{text-align:center;padding:34px 10px;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+
+.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
+.tbl th{text-align:left;font-size:13px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:2px solid var(--line)}
+.tbl td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tblw{overflow-x:auto}
+
+/* login */
+.login-hero{background:linear-gradient(135deg,var(--hero-from) 0%,var(--hero-to) 100%);color:var(--hero-ink);padding:52px 20px 96px;border-bottom:1px solid var(--line)}
+.login-hero h1{margin:0 0 10px;font-size:clamp(28px,5vw,46px);line-height:1.1;max-width:18ch}
+.login-hero p{margin:0;max-width:60ch;font-size:17px}
+.accts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.acct{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:grid;gap:10px;align-content:start}
+.acct h3{margin:0;font-size:17px}
+.acct .role{display:inline-block;background:var(--teal-soft);color:var(--teal-deep);border-radius:999px;padding:2px 11px;font-size:13px;font-weight:600;justify-self:start}
+.acct p{margin:0;color:var(--muted);font-size:14px}
+
+.probe summary{cursor:pointer;font-weight:700;font-size:16px}
+.probe .res{display:grid;gap:8px;margin-top:14px}
+.probe .res div{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-sm);padding:9px 12px;font-size:14px}
+.probe .res .y{background:var(--ok-soft);color:var(--ok)} .probe .res .n{background:var(--err-soft);color:var(--err)}
+.probe .tests{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,24px);background:var(--teal-deep);color:var(--on-teal);padding:11px 20px;border-radius:999px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:50;max-width:92vw;text-align:center}
+.toast.bad{background:var(--err)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:900px){.split{grid-template-columns:1fr}.q{grid-template-columns:1fr 1fr;gap:8px 14px}.q>:last-child{grid-column:1/-1}}
+@media (max-width:560px){.form{grid-template-columns:1fr}.top-in{padding:10px 14px}.hero,.login-hero{padding-left:14px;padding-right:14px}main{padding:0 14px 48px}.q{grid-template-columns:1fr}.voucher .paper{padding:22px 18px}}
+/* ---------- halaman login ---------- */
+.auth{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1.05fr 1fr}
+.auth-brand{background:linear-gradient(135deg,var(--hero-from) 0%,var(--hero-to) 100%);color:var(--hero-ink);padding:44px 56px;display:flex;flex-direction:column;justify-content:space-between;gap:32px;border-right:1px solid var(--line)}
+.auth-brand h1{margin:0 0 12px;font-size:clamp(28px,3.4vw,42px);line-height:1.15;letter-spacing:-.01em;max-width:16ch}
+.auth-brand .lead{margin:0;max-width:46ch;font-size:16px;color:var(--hero-sub)}
+.auth-points{list-style:none;margin:0;padding:0;display:grid;gap:12px;max-width:460px}
+.auth-points li{display:flex;gap:12px;align-items:flex-start;background:var(--hero-chip);border:1px solid var(--hero-chip-line);border-radius:var(--r-md);padding:12px 14px;font-size:14.5px}
+.auth-points svg{color:var(--teal);margin-top:2px}
+.auth-panel{display:grid;place-items:center;padding:32px 24px;background:var(--bg)}
+.auth-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:30px 28px;box-shadow:0 18px 40px -28px var(--shadow)}
+.auth-card h2{margin:0 0 4px;font-size:24px}
+.auth-card h2::after{content:none}
+.auth-card .sub{color:var(--muted);margin:0 0 22px;font-size:14.5px}
+.auth-card label{display:grid;gap:6px;font-weight:600;font-size:14px;margin-bottom:16px}
+.auth-card input:not([type=checkbox]){width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:11px 13px}
+.pwwrap{position:relative;display:block}
+.pwwrap input{padding-right:104px!important}
+.pwtoggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--teal-deep);font-weight:600;font-size:13px;cursor:pointer;padding:6px 10px;border-radius:8px}
+.pwtoggle:hover{background:var(--teal-soft)}
+.auth-err{display:flex;gap:8px;align-items:flex-start;background:var(--err-soft);color:var(--err);border-radius:var(--r-sm);padding:10px 12px;font-size:14px;margin-bottom:16px}
+.auth-card .btn.primary{width:100%;padding:12px 18px;font-size:15.5px}
+.auth-foot{margin-top:14px;font-size:13.5px;color:var(--muted);text-align:center}
+.demo{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.demo summary{cursor:pointer;font-weight:600;font-size:14px}
+.demo .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.demo .m{margin:10px 0 0}
+@media (max-width:860px){.auth{grid-template-columns:1fr}.auth-brand{padding:26px 22px;gap:14px;border-right:0;border-bottom:1px solid var(--line)}.auth-points{display:none}.auth-brand h1{font-size:26px}.auth-panel{align-items:start;padding:22px 16px 40px}}
+
+/* ---------- masuk / daftar ---------- */
+.authtabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:22px}
+.authtabs button{border:0;background:transparent;padding:9px 12px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--muted)}
+.authtabs button:hover{color:var(--ink)}
+.authtabs button[aria-selected="true"]{background:var(--teal);color:var(--on-teal)}
+.auth-ok{display:flex;gap:8px;align-items:flex-start;background:var(--ok-soft);color:var(--ok);border-radius:var(--r-sm);padding:10px 12px;font-size:14px;margin-bottom:16px}
+.auth-card select{padding:11px 13px}
+
+/* ---------- pajak voucher ---------- */
+.taxrow{display:grid;grid-template-columns:1fr 104px 150px;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:9px}
+.taxrow.on{border-color:var(--teal);background:var(--teal-soft)}
+.taxchk{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.taxchk input{width:18px;height:18px;margin-top:3px;accent-color:var(--teal)}
+.taxchk small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.tag{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;margin-left:6px}
+.tag.add{background:var(--ok-soft);color:var(--ok)}
+.tag.withhold{background:var(--warn-soft);color:var(--warn)}
+.rate{display:flex;align-items:center;gap:6px}
+.rate input{text-align:right;padding:7px 9px}
+.amt{text-align:right;font-weight:600;font-size:14px}
+.taxadd{border:1.5px dashed var(--line);border-radius:var(--r-md);padding:12px;margin-top:6px;display:grid;gap:8px}
+.taxaddrow{display:grid;grid-template-columns:1fr 90px 120px auto;gap:8px}
+.taxsum{position:sticky;top:calc(80px + env(safe-area-inset-top,0px))}
+.sumrow{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.sumrow.big{font-size:18px;font-weight:700;border-bottom:0;padding-top:12px;color:var(--teal-deep)}
+.approvers{border:1.5px solid var(--line);border-radius:var(--r-md);padding:10px 14px;margin:16px 0 0;display:grid;gap:6px}
+.approvers legend{font-weight:600;font-size:14px;padding:0 6px}
+.approvers label{display:flex;gap:8px;align-items:center;font-size:14.5px}
+.approvers input{accent-color:var(--teal)}
+
+/* ---------- voucher pengeluaran (susunan lembar) ---------- */
+.voucher.vwide{max-width:780px}
+.vpaper{padding:22px!important}
+.vpaper .vs{border:1px solid #6e6e6e;background:#fff;color:#222;font-size:13.5px}
+.vpaper .vs-title{background:#e0dfe0;text-align:center;padding:7px;border-bottom:1px solid #6e6e6e;font-weight:600}
+.vpaper .vs-meta{display:grid;grid-template-columns:140px 1fr;border-bottom:1px solid #a8a8a8}
+.vpaper .vs-l{text-align:center;padding:6px 8px;border-right:1px solid #a8a8a8;color:#333}
+.vpaper .vs-v{padding:6px 12px}
+.vpaper .vs-table{width:100%;border-collapse:collapse;margin:0}
+.vpaper .vs-table th{background:#e0dfe0;font-weight:500;text-align:center;border:1px solid #6e6e6e;border-left:0;border-right:1px solid #6e6e6e;padding:6px}
+.vpaper .vs-table td{border:1px solid #a8a8a8;border-left:0;padding:6px 10px;text-align:left}
+.vpaper .vs-table td.c{text-align:center;white-space:nowrap}
+.vpaper .vs-table td.r{text-align:right;white-space:nowrap}
+.vpaper .vs-table th:last-child,.vpaper .vs-table td:last-child{border-right:0}
+.vpaper .vs-table tr.vs-tax td{color:#5b4a55;background:#fbf7f9}
+.vpaper .vs-table tr.vs-sub td{font-weight:600;background:#f3f1f2}
+.vpaper .vs-total td{background:#e0dfe0;border-top:1px solid #6e6e6e;font-weight:600}
+.vpaper .vs-sign{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:26px;align-items:start}
+.vpaper .vs-approve{display:grid;gap:14px}
+.vpaper .vs-approve.a2{grid-template-columns:1fr 1fr}
+.vpaper .vs-box{border:1px solid #6e6e6e;height:104px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;color:#333;font-size:13px}
+.vpaper .vs-role{margin-top:6px;color:#222;padding-left:6px}
+.vpaper .vs-name{font-size:12px;color:#666;padding-left:6px;margin-top:2px}
+.vpaper .vs-note{margin:20px 0 0;font-size:11.5px;color:#7a3550}
+@media (max-width:640px){
+  .taxrow{grid-template-columns:1fr auto}
+  .taxrow .amt{grid-column:1/-1;text-align:left}
+  .taxaddrow{grid-template-columns:1fr 1fr}
+  .taxsum{position:static}
+  .vpaper{padding:12px!important}
+  .vpaper .vs-meta{grid-template-columns:104px 1fr}
+  .vpaper .vs-sign{grid-template-columns:1fr;gap:18px}
+  .vpaper .vs-table th,.vpaper .vs-table td{padding:5px 6px;font-size:12.5px}
+}
+
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in" id="bar"></div></header>
+<div id="app"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =====================================================================
+   BAGIAN 1. DATA (di produksi: database di balik API, bukan di browser)
+   ===================================================================== */
+const TODAY='2026-10-13';
+const MON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rp=n=>'Rp '+Number(n||0).toLocaleString('id-ID');
+const dstr=iso=>{const p=iso.split('-');return (+p[2])+' '+MON[+p[1]-1]+' '+p[0];};
+const dayDiff=iso=>Math.round((Date.parse(iso)-Date.parse(TODAY))/864e5);
+const stamp=()=>'13 Okt 2026, '+new Date().toTimeString().slice(0,5);
+const FIELDS=[['no','Nomor invoice','text'],['tgl','Tanggal invoice','date'],['vendor','Nama vendor','text'],['npwp','NPWP vendor','text'],['dpp','DPP','num'],['ppn','PPN 11%','num'],['total','Total tagihan','num'],['rek','Rekening tujuan','text']];
+
+const ROLE={
+  pic:{label:'PIC Klien'},support:{label:'Intake Support'},finance:{label:'Finance Reviewer'},lead:{label:'Service Lead'},admin:{label:'System Admin'}
+};
+const PERMS={
+  pic:['queue:read:own','doc:create','doc:read:own','doc:tax:own','doc:fix:own','voucher:download:own','audit:read:own'],
+  support:['queue:read:delegated','doc:create:delegated','doc:read:delegated','doc:tax:delegated','doc:fix:delegated','voucher:read:delegated','audit:read:delegated'],
+  finance:['queue:read:assigned','doc:read:assigned','doc:correct:assigned','doc:decide:assigned','voucher:read:assigned','audit:read:assigned'],
+  lead:['queue:read:workload','task:reassign','audit:read:workload'],
+  admin:['queue:read:access','access:decide','user:manage','client:manage','audit:read:admin']
+};
+const SCOPE={own:'dokumen order yang masuk lewat Anda',delegated:'dokumen yang Anda unggah dan dokumen yang dikembalikan ke Intake Support',assigned:'tugas review yang ditugaskan kepada Anda'};
+const USERS=[
+  {id:'dewi',name:'Dewi Lestari',role:'pic',about:'PIC untuk PT Maju Jaya, CV Sinar Abadi, Koperasi Sejahtera, dan UD Berkah Tani.'},
+  {id:'eko',name:'Eko Prasetyo',role:'pic',about:'PIC untuk PT Karya Nusa.'},
+  {id:'andi',name:'Andi Saputra',role:'support',about:'Mengunggah dan menindaklanjuti dokumen sesuai delegasi dari Dewi.'},
+  {id:'rina',name:'Rina Wijaya',role:'finance',about:'Memeriksa dan menyetujui dokumen yang ditugaskan kepadanya.'},
+  {id:'hana',name:'Hana Putri',role:'finance',about:'Memeriksa dan menyetujui dokumen yang ditugaskan kepadanya.'},
+  {id:'bayu',name:'Bayu Kurniawan',role:'lead',about:'Memantau beban kerja tim dan mengalihkan tugas.'},
+  {id:'sari',name:'Sari Anggraini',role:'admin',about:'Mengelola akun, hak akses, dan delegasi.'}
+];
+const DEMO_PW='amiga2026';
+USERS.forEach(u=>{u.email=u.id+'@amiga.demo';u.pw=DEMO_PW;u.status='Aktif';});
+USERS.push({id:'maya',name:'Maya Sartika',role:'support',about:'Pendaftar baru, menunggu persetujuan.',email:'maya@amiga.demo',pw:DEMO_PW,status:'Menunggu'});
+const SELF_ROLES=['pic','support','finance','lead'];
+const LOGIN_TRIES={};
+/* Klien tidak terikat pada satu PIC. PIC melekat pada ORDER (dokumen), yaitu PIC yang membawa order itu. */
+const CLIENTS=['PT Maju Jaya','CV Sinar Abadi','Koperasi Sejahtera','UD Berkah Tani','PT Karya Nusa'];
+const baseConf={no:.98,tgl:.97,vendor:.95,npwp:.93,dpp:.96,ppn:.94,total:.97,rek:.9};
+function mk(id,no,vendor,klien,jenis,tgl,dl,status,owner,uploader,reviewer,f,conf,src){
+  const ff=Object.assign({no,tgl,vendor},f),a=Math.round(ff.dpp*.7);
+  const items=[{tgl:tgl,ket:'Jasa layanan periode berjalan',jumlah:'1 paket',harga:a},{tgl:tgl,ket:'Biaya tambahan',jumlah:'1 paket',harga:ff.dpp-a}];
+  return {id,no,klien,jenis,tgl,deadline:dl,status,owner,uploader,reviewer,issue:'',f:ff,conf,src:Object.assign({no,tgl,vendor},src||f),items,tax:null,approvers:1,voucherNo:null};
+}
+const DOCS=[
+  mk('D-1041','INV-2026-0141','PT Maju Jaya Logistik','PT Maju Jaya','Pembayaran vendor','2026-10-12','2026-10-15','Dalam Review','dewi','dewi','rina',
+    {npwp:'01.234.567.8-091.000',dpp:12500000,ppn:1375000,total:13875000,rek:'BCA 0123456789'},Object.assign({},baseConf,{rek:.82})),
+  (function(){const d=mk('D-1042','INV-0098','CV Sinar Abadi','CV Sinar Abadi','Reimburse','2026-10-11','2026-10-13','Dikembalikan','dewi','andi','rina',
+    {npwp:'02.345.678.9-012.000',dpp:4200000,ppn:462000,total:4862000,rek:'Mandiri 1370012345'},Object.assign({},baseConf,{total:.71}),
+    {npwp:'02.345.678.9-012.000',dpp:4200000,ppn:462000,total:4662000,rek:'Mandiri 1370012345'});d.issue='Total tidak sama dengan DPP + PPN';return d;})(),
+  mk('D-1043','INV-77/XI','PT Karya Nusa Prima','PT Karya Nusa','Pembayaran vendor','2026-10-12','2026-10-16','Dalam Review','eko','rina','rina',
+    {npwp:'03.456.789.0-123.000',dpp:9000000,ppn:990000,total:9990000,rek:'BNI 0456789012'},baseConf),
+  mk('D-1039','INV-5520','Koperasi Sejahtera','Koperasi Sejahtera','Pembayaran vendor','2026-10-08','2026-10-11','Disetujui','dewi','dewi','rina',
+    {npwp:'04.567.890.1-234.000',dpp:6000000,ppn:660000,total:6660000,rek:'BRI 0345678901'},baseConf),
+  mk('D-1044','INV-0311','UD Berkah Tani','UD Berkah Tani','Pembayaran vendor','2026-10-13','2026-10-17','Diproses','eko','andi','hana',
+    {npwp:'05.678.901.2-345.000',dpp:3000000,ppn:330000,total:3330000,rek:'BCA 0987654321'},baseConf),
+  mk('D-1045','INV-2210','PT Maju Jaya Logistik','PT Maju Jaya','Pajak','2026-10-12','2026-10-14','Dalam Review','eko','eko','hana',
+    {npwp:'03.456.789.0-123.000',dpp:2000000,ppn:220000,total:2220000,rek:'BNI 0456789012'},baseConf)
+];
+(function(){const PPN={code:'PPN',label:'PPN',rate:11,kind:'add'},P23={code:'PPH23',label:'PPh 23',rate:2,kind:'withhold'};const g=id=>DOCS.find(d=>d.id===id);
+  g('D-1041').tax=[PPN,P23];g('D-1043').tax=[PPN,P23];g('D-1043').approvers=2;g('D-1039').tax=[PPN];g('D-1039').approvers=2;g('D-1039').voucherNo='VCH-KS-0012';})();
+const KLIEN_CODE={'PT Maju Jaya':'MJ','CV Sinar Abadi':'SA','Koperasi Sejahtera':'KS','UD Berkah Tani':'UB','PT Karya Nusa':'KN'};
+const COUNTERS={'PT Maju Jaya':7,'CV Sinar Abadi':3,'Koperasi Sejahtera':12,'UD Berkah Tani':0,'PT Karya Nusa':4};
+let REQ_SEQ=4;
+const REQUESTS=[
+  {id:'R-3',type:'reset',by:'hana',text:'Hana meminta atur ulang akses masuk akun.',date:'13 Okt 2026'},
+  {id:'R-4',type:'register',uid:'maya',by:'maya',text:'Maya Sartika mendaftar sebagai pegawai (peran yang diminta: Intake Support).',date:'13 Okt 2026'}
+];
+const EVENTS=[
+  {k:'doc',d:'D-1041',t:'12 Okt 2026, 09:12',a:'Dewi Lestari (PIC Klien)',w:'Dokumen diunggah',x:'Metadata diisi: Pembayaran vendor.'},
+  {k:'doc',d:'D-1041',t:'12 Okt 2026, 09:13',a:'Robot Admin',w:'Ekstraksi selesai',x:'8 field terbaca. Satu field berkeyakinan rendah (rekening tujuan).',bot:1},
+  {k:'doc',d:'D-1042',t:'11 Okt 2026, 15:40',a:'Andi Saputra (Intake Support)',w:'Dokumen diunggah atas nama PIC Klien',x:'Diunggah untuk CV Sinar Abadi atas order PIC Dewi Lestari.'},
+  {k:'doc',d:'D-1042',t:'11 Okt 2026, 15:41',a:'Robot Admin',w:'Aturan bisnis ditandai',x:'Total tidak sama dengan DPP + PPN.',bot:1},
+  {k:'doc',d:'D-1042',t:'11 Okt 2026, 15:42',a:'Robot Admin',w:'Dokumen dikembalikan ke Intake Support',x:'Menunggu perbaikan data sebelum masuk review Finance.',bot:1},
+  {k:'doc',d:'D-1043',t:'12 Okt 2026, 11:05',a:'Rina Wijaya (Finance Reviewer)',w:'Dokumen diunggah',x:'Diunggah untuk PT Karya Nusa.'},
+  {k:'doc',d:'D-1039',t:'09 Okt 2026, 10:20',a:'Rina Wijaya (Finance Reviewer)',w:'Hasil ekstraksi disetujui',x:'Voucher siap diunduh.'},
+  {k:'doc',d:'D-1039',t:'09 Okt 2026, 13:02',a:'Dewi Lestari (PIC Klien)',w:'Voucher diunduh',x:'Voucher dikirim ke Client Approver di luar AMIGA.'},
+  {k:'workload',d:'D-1041',t:'12 Okt 2026, 09:14',a:'Sistem',w:'Tugas ditugaskan ke Rina Wijaya',x:'Tenggat 15 Okt 2026.',bot:1},
+  {k:'workload',d:'D-1042',t:'13 Okt 2026, 08:00',a:'Sistem',w:'Tenggat hari ini',x:'D-1042 jatuh tempo 13 Okt 2026.',bot:1},
+  {k:'workload',d:'D-1043',t:'12 Okt 2026, 11:06',a:'Sistem',w:'Konflik penugasan terdeteksi',x:'Pengunggah dan reviewer adalah orang yang sama. Tugas perlu dialihkan.',bot:1},
+  {k:'admin',d:'',t:'01 Okt 2026, 10:00',a:'Sari Anggraini (System Admin)',w:'Klien didaftarkan',x:'PT Karya Nusa ditambahkan ke daftar klien.'}
+];
+
+/* =====================================================================
+   BAGIAN 2. KEBIJAKAN AKSES (RBAC)
+   Semua data dan aksi lewat fungsi di bawah. Tolak secara default.
+   Di produksi lapisan ini ada di server (API Gateway authorizer + Lambda),
+   bukan di browser. Prototipe ini meniru perilakunya.
+   ===================================================================== */
+const newUp=()=>({file:'',klien:'',pic:'',jenis:'',tgl:TODAY,cat:'',errs:{}});
+const S={session:null,screen:null,sel:null,reason:'',fKlien:'all',fStatus:'all',auditDoc:'all',probe:[],probeOpen:false,up:newUp()};
+S.loginErr='';S.loginEmail='';S.authMode='login';S.authNote='';S.regErr='';S.reg={name:'',email:'',role:'support'};S.nu={name:'',email:'',role:'support',pw:''};S.apvRole={};S.nc={name:''};
+class E extends Error{constructor(m,deny){super(m);this.deny=!!deny;}}
+const me=()=>{if(!S.session)throw new E('Belum masuk.',true);return S.session;};
+const userById=id=>USERS.find(u=>u.id===id);
+const docById=id=>DOCS.find(d=>d.id===id);
+const activeUsers=role=>USERS.filter(u=>u.role===role&&u.status==='Aktif');
+const label=u=>u.name+' ('+ROLE[u.role].label+')';
+const ev=(k,d,w,x,a,bot)=>EVENTS.push({k,d,t:stamp(),a:a||label(me()),w,x:x||'',bot:bot?1:0});
+function inScope(u,doc,scope){
+  if(scope==='own')return doc.owner===u.id;
+  if(scope==='delegated')return doc.uploader===u.id||doc.status==='Dikembalikan';
+  if(scope==='assigned')return doc.reviewer===u.id;
+  return false;
+}
+function can(u,perm,doc){
+  if(!(PERMS[u.role]||[]).includes(perm))return {ok:false,why:'Peran '+ROLE[u.role].label+' tidak memiliki izin "'+perm+'".'};
+  const scope=perm.split(':')[2];
+  if(doc&&SCOPE[scope]){
+    if(u.role==='finance'&&doc.uploader===u.id)return {ok:false,why:'Pemisahan tugas: Anda pengunggah dokumen '+doc.no+'.'};
+    if(!inScope(u,doc,scope))return {ok:false,why:'Dokumen '+doc.no+' di luar cakupan akses Anda ('+SCOPE[scope]+').'};
+  }
+  return {ok:true};
+}
+function logDeny(u,perm,why){EVENTS.push({k:'security',d:'',t:stamp(),a:label(u),w:'Akses ditolak: '+perm,x:why});}
+function fixGuard(finPerm,d){const u=me();if(u.role==='finance')return guard(finPerm,d);
+  guard(u.role==='support'?'doc:fix:delegated':'doc:fix:own',d);
+  if(d.status!=='Dikembalikan')throw new E('Dokumen hanya bisa diperbaiki saat berstatus Dikembalikan.');return u;}
+function guard(perm,doc){const u=me(),r=can(u,perm,doc);if(!r.ok){logDeny(u,perm,r.why);throw new E(r.why,true);}return u;}
+
+function validate(d){
+  const f=d.f,c=d.conf,r={};
+  FIELDS.forEach(x=>{const k=x[0];r[k]={s:'ok',m:'Sesuai aturan'};
+    if(c[k]<.85)r[k]={s:'warn',m:'Keyakinan ekstraksi rendah ('+Math.round(c[k]*100)+'%). Cek dengan dokumen asli.'};
+    if(f[k]===''||f[k]==null)r[k]={s:'err',m:'Wajib diisi'};});
+  if(!/^\d{2}\.\d{3}\.\d{3}\.\d-\d{3}\.\d{3}$/.test(String(f.npwp)))r.npwp={s:'err',m:'Format NPWP tidak valid'};
+  if(Math.round(+f.dpp*.11)!==+f.ppn)r.ppn={s:'warn',m:'Tidak sama dengan 11% dari DPP ('+rp(Math.round(+f.dpp*.11))+')'};
+  const sum=+f.dpp+(+f.ppn);
+  if(sum!==+f.total)r.total={s:'err',m:'Total tidak sama dengan DPP + PPN. Selisih '+rp(Math.abs(+f.total-sum))+'.'};
+  if(d.items&&d.items.length){const sm=d.items.reduce((a,i)=>a+i.harga,0);if(sm!==+f.dpp&&r.dpp.s!=='err')r.dpp={s:'warn',m:'Jumlah baris rincian ('+rp(sm)+') berbeda dengan DPP.'};}
+  return r;
+}
+const tally=v=>{const o={ok:0,warn:0,err:0};Object.keys(v).forEach(k=>o[v[k].s]++);return o;};
+const summary=d=>({id:d.id,no:d.no,klien:d.klien,jenis:d.jenis,deadline:d.deadline,status:d.status,issue:d.issue,uploader:d.uploader,owner:d.owner,reviewer:d.reviewer,taxSet:d.tax!==null,voucherNo:d.voucherNo});
+const safeDate=x=>/^\d{4}-\d{2}-\d{2}$/.test(x)?dstr(x):(x||'-');
+/* Pajak: tarif hanya NILAI AWAL, bisa diubah per voucher. Konfirmasi ke tim pajak AMIGA. */
+const TAX_PRESETS=[
+  {code:'PPN',label:'PPN',rate:11,kind:'add',hint:'Ditambahkan ke DPP'},
+  {code:'PPH21',label:'PPh 21',rate:2.5,kind:'withhold',hint:'Honor atau jasa orang pribadi (tarif contoh, sesuaikan)'},
+  {code:'PPH22',label:'PPh 22',rate:1.5,kind:'withhold',hint:'Pembelian barang oleh pihak tertentu'},
+  {code:'PPH23',label:'PPh 23',rate:2,kind:'withhold',hint:'Jasa teknik, manajemen, konsultan, dan sejenisnya'},
+  {code:'PPH4_2',label:'PPh 4 ayat 2 (final)',rate:10,kind:'withhold',hint:'Misalnya sewa tanah atau bangunan'},
+  {code:'PPH26',label:'PPh 26',rate:20,kind:'withhold',hint:'Penghasilan wajib pajak luar negeri'}
+];
+function computeTaxes(dpp,taxes){const lines=taxes.map(t=>Object.assign({},t,{amount:Math.round(dpp*t.rate/100)}));const add=lines.filter(l=>l.kind==='add').reduce((a,l)=>a+l.amount,0);const wh=lines.filter(l=>l.kind==='withhold').reduce((a,l)=>a+l.amount,0);return {dpp,lines,add,withhold:wh,net:dpp+add-wh};}
+function normalizeTaxes(raw){
+  if(!Array.isArray(raw))throw new E('Data pajak tidak valid.');
+  if(raw.length>8)throw new E('Maksimal 8 jenis pajak per voucher.');
+  const seen={};
+  return raw.map((o,i)=>{const label=String(o.label||'').trim().slice(0,40),rate=Number(o.rate),code=String(o.code||'').slice(0,20)||('LAIN'+(i+1));
+    if(!label)throw new E('Nama pajak wajib diisi.');
+    if(o.kind!=='add'&&o.kind!=='withhold')throw new E('Jenis pajak "'+label+'" tidak valid.');
+    if(!isFinite(rate)||rate<=0||rate>100)throw new E('Tarif "'+label+'" harus lebih dari 0 dan paling besar 100%.');
+    if(seen[code])throw new E('Pajak "'+label+'" dipilih dua kali.');seen[code]=1;
+    return {code,label,rate:Math.round(rate*100)/100,kind:o.kind};});
+}
+/* Nomor voucher berurutan PER KLIEN, naik hanya saat voucher terbit (disetujui). */
+function makeClientCode(n){const w=n.replace(/[^A-Za-z ]/g,'').split(/\s+/).filter(x=>x&&!['PT','CV','UD','KOPERASI'].includes(x.toUpperCase()));
+  let c=(w.map(x=>x[0]).join('')||n.replace(/[^A-Za-z]/g,'')).toUpperCase().slice(0,3);if(c.length<2)c=(c+'XX').slice(0,2);
+  const b=c;let i=2;while(Object.values(KLIEN_CODE).includes(c))c=b+(i++);return c;}
+function issueVoucherNo(klien){const code=KLIEN_CODE[klien];if(!code)throw new E('Kode klien belum diatur.');const n=(COUNTERS[klien]||0)+1;COUNTERS[klien]=n;return 'VCH-'+code+'-'+String(n).padStart(4,'0');}
+const openTasks=uid=>DOCS.filter(d=>d.reviewer===uid&&['Dalam Review','Diproses'].includes(d.status)).length;
+
+const api={
+  queue(){
+    const u=me();
+    if(u.role==='lead'){guard('queue:read:workload');
+      return DOCS.map(d=>({id:d.id,no:d.no,klien:d.klien,jenis:d.jenis,deadline:d.deadline,status:d.status,reviewer:d.reviewer,uploader:d.uploader,conflict:d.reviewer===d.uploader}));}
+    if(u.role==='admin'){guard('queue:read:access');return REQUESTS.slice();}
+    const perm={pic:'queue:read:own',support:'queue:read:delegated',finance:'queue:read:assigned'}[u.role];
+    guard(perm);
+    return DOCS.filter(d=>can(u,perm,d).ok&&(u.role!=='finance'||d.status==='Dalam Review')).map(summary);
+  },
+  getDoc(id){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');guard('doc:read:assigned',d);return JSON.parse(JSON.stringify(d));},
+  correct(id,k,v){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');fixGuard('doc:correct:assigned',d);const x=FIELDS.find(q=>q[0]===k);const old=d.f[k];if(String(old)===String(v))return;d.f[k]=v;d.conf[k]=1;
+    ev('doc',id,'Data dikoreksi: '+x[1],'Dari '+(x[2]==='num'?rp(old):old)+' menjadi '+(x[2]==='num'?rp(v):v)+'.');},
+  decide(id,kind,why){
+    const d=docById(id);const u=guard('doc:decide:assigned',d);
+    if(d.status!=='Dalam Review')throw new E('Hanya dokumen berstatus Dalam Review yang bisa diputuskan.');
+    if(kind==='approve'){if(tally(validate(d)).err)throw new E('Masih ada field bermasalah. Selesaikan dulu sebelum menyetujui.');
+      if(!d.tax)throw new E('Pajak voucher belum diatur. Minta PIC Klien atau Intake Support menyelesaikannya dulu.');
+      d.voucherNo=issueVoucherNo(d.klien);d.status='Disetujui';d.issue='';
+      ev('doc',id,'Hasil ekstraksi disetujui','Voucher '+d.voucherNo+' diterbitkan dan siap dilihat atau diunduh.');ev('workload',id,'Tugas selesai','Disetujui oleh '+u.name+'.');return 'Disetujui. Voucher '+d.voucherNo+' diterbitkan.';}
+    if(!why)throw new E('Tulis alasan agar penerima tahu apa yang perlu dilakukan.');
+    if(kind==='reject'){d.status='Ditolak';d.issue=why;ev('doc',id,'Dokumen ditolak','Alasan: '+why);ev('workload',id,'Tugas selesai','Ditolak oleh '+u.name+'.');}
+    if(kind==='return'){d.status='Dikembalikan';d.issue=why;d.note='';ev('doc',id,'Dokumen dikembalikan ke Intake Support','Alasan: '+why);ev('workload',id,'Tugas dikembalikan ke Intake Support','Oleh '+u.name+'. Menunggu perbaikan.');}
+  },
+  vouchers(){const u=me();const perm=u.role==='pic'?'voucher:download:own':u.role==='support'?'voucher:read:delegated':'voucher:read:assigned';guard(perm);
+    const open=['Disetujui'];
+    return DOCS.filter(d=>can(u,perm,d).ok&&open.includes(d.status)).map(summary);},
+  getVoucher(id){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');const u=me();guard(u.role==='pic'?'voucher:download:own':u.role==='support'?'voucher:read:delegated':'voucher:read:assigned',d);
+    if(d.status!=='Disetujui')throw new E('Voucher baru terbit setelah disetujui Finance Reviewer.');
+    const rows=d.items.map((it,i)=>({no:i+1,tgl:it.tgl?safeDate(it.tgl):'',ket:it.ket,jumlah:it.jumlah,harga:it.harga}));
+    if(!rows.length&&d.f.dpp>0)rows.push({no:1,tgl:safeDate(d.f.tgl),ket:'Sesuai invoice',jumlah:'',harga:d.f.dpp});
+    const diff=d.f.dpp-rows.reduce((a,r)=>a+r.harga,0);if(diff!==0)rows.push({no:rows.length+1,tgl:'',ket:'Penyesuaian terhadap DPP',jumlah:'',harga:diff});
+    const bd=computeTaxes(d.f.dpp,d.tax||[]);
+    rows.push({no:'',tgl:'',ket:'Subtotal (DPP)',jumlah:'',harga:d.f.dpp,sub:true});
+    bd.lines.forEach(l=>rows.push({no:'',tgl:'',ket:l.label+' ('+(l.kind==='add'?'ditambahkan':'dipotong')+')',jumlah:l.rate+'%',harga:l.kind==='add'?l.amount:-l.amount,tax:true}));
+    const taxText=bd.lines.length?bd.lines.map(l=>l.label+' '+l.rate+'%: '+(l.kind==='add'?'+ ':'- ')+rp(l.amount)).join('; '):'Tanpa pajak';
+    const dates=d.items.map(i=>i.tgl).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort();const from=dates[0]||d.f.tgl,to=dates[dates.length-1]||from;
+    return {id:d.id,no:d.no,number:d.voucherNo,status:d.status,nama:d.f.vendor,perusahaan:d.klien,periode:from===to?safeDate(from):safeDate(from)+' - '+safeDate(to),nominal:bd.net,dpp:d.f.dpp,add:bd.add,withhold:bd.withhold,taxText,rows,total:bd.net,approvers:d.approvers,submitter:userById(d.owner).name,reviewer:userById(d.reviewer).name};},
+  download(id){const d=docById(id);guard('voucher:download:own',d);if(d.status!=='Disetujui')throw new E('Voucher belum disetujui Finance.');ev('doc',id,'Voucher diunduh','Voucher '+d.voucherNo+' diunduh sebagai PDF.');},
+  getTaxDoc(id){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');const u=me();guard(u.role==='support'?'doc:tax:delegated':'doc:tax:own',d);
+    return {id:d.id,no:d.no,klien:d.klien,vendor:d.f.vendor,status:d.status,dpp:d.f.dpp,ppnInvoice:d.f.ppn,tax:d.tax?JSON.parse(JSON.stringify(d.tax)):null,approvers:d.approvers};},
+  setTax(id,raw,approvers){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');const u=me();guard(u.role==='support'?'doc:tax:delegated':'doc:tax:own',d);
+    if(d.status==='Disetujui'||d.status==='Ditolak')throw new E('Dokumen sudah selesai diproses. Pajak tidak bisa diubah lagi.');
+    if(approvers!==1&&approvers!==2)throw new E('Jumlah penyetuju harus 1 atau 2 pihak.');
+    const taxes=normalizeTaxes(raw);d.tax=taxes;d.approvers=approvers;const bd=computeTaxes(d.f.dpp,taxes);
+    ev('doc',id,'Pajak voucher diatur',(taxes.map(t=>t.label+' '+t.rate+'%').join(', ')||'Tanpa pajak')+'. Nominal voucher '+rp(bd.net)+'. Penyetuju: '+approvers+' pihak.');
+    return 'Pajak tersimpan. Nominal voucher '+rp(bd.net)+'.';},
+  klienOptions(){const u=me();guard(u.role==='pic'?'doc:create':'doc:create:delegated');return CLIENTS.slice();},
+  picOptions(){const u=me();guard(u.role==='pic'?'doc:create':'doc:create:delegated');return activeUsers('pic').map(p=>({id:p.id,name:p.name}));},
+  getFixDoc(id){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');const u=me();guard(u.role==='support'?'doc:fix:delegated':'doc:fix:own',d);return JSON.parse(JSON.stringify(d));},
+  resubmit(id,note){const d=docById(id);if(!d)throw new E('Dokumen tidak ditemukan.');const u=me();guard(u.role==='support'?'doc:fix:delegated':'doc:fix:own',d);
+    if(d.status!=='Dikembalikan')throw new E('Hanya dokumen berstatus Dikembalikan yang bisa dikirim ulang.');
+    if(tally(validate(d)).err)throw new E('Masih ada field bermasalah. Perbaiki dulu sebelum mengirim ulang.');
+    if(!d.tax)throw new E('Pajak voucher belum diatur. Atur pajak dulu sebelum mengirim ulang.');
+    d.status='Dalam Review';d.issue='';d.note=String(note||'').slice(0,300);
+    ev('doc',id,'Dokumen diperbaiki dan dikirim ulang','Dikirim ulang ke '+userById(d.reviewer).name+(d.note?'. Catatan: '+d.note:'.'));
+    ev('workload',id,'Tugas kembali ke Finance Reviewer','Menunggu review ulang oleh '+userById(d.reviewer).name+'.',null,true);},
+  createDoc(p){
+    const u=me();
+    if(!CLIENTS.includes(p.klien))throw new E('Klien tidak dikenal.');
+    let owner;
+    if(u.role==='pic'){guard('doc:create');owner=u.id;}
+    else{guard('doc:create:delegated');const po=userById(p.pic);if(!po||po.role!=='pic'||po.status!=='Aktif')throw new E('Pilih PIC Klien yang menerima order ini.');owner=po.id;}
+    const cand=activeUsers('finance').filter(x=>x.id!==u.id).sort((a,b)=>openTasks(a.id)-openTasks(b.id));
+    if(!cand.length)throw new E('Belum ada Finance Reviewer aktif yang bisa menerima tugas.');
+    const n=DOCS.length;
+    const d=mk('D-'+(1040+n+1),'INV-'+(7000+n),p.klien+' (vendor)',p.klien,p.jenis,p.tgl,'2026-10-20','Diproses',owner,u.id,cand[0].id,
+      {npwp:'06.789.012.3-456.000',dpp:8000000,ppn:880000,total:8880000,rek:'BCA 1122334455'},Object.assign({},baseConf));
+    d.note=String(p.cat||'').slice(0,300);
+    DOCS.push(d);
+    ev('doc',d.id,u.role==='support'?'Dokumen diunggah atas order PIC '+userById(owner).name:'Dokumen diunggah','File '+p.file+'. Klien '+p.klien+', '+p.jenis+(p.cat?'. Catatan: '+p.cat:'.'));
+    setTimeout(()=>{d.status='Dalam Review';EVENTS.push({k:'doc',d:d.id,t:stamp(),a:'Robot Admin',w:'Ekstraksi dan pemeriksaan aturan selesai',x:'Semua aturan bisnis lolos. Dokumen masuk antrean Finance Reviewer.',bot:1});
+      EVENTS.push({k:'workload',d:d.id,t:stamp(),a:'Sistem',w:'Tugas ditugaskan ke '+userById(d.reviewer).name,x:'Tenggat '+dstr(d.deadline)+'.',bot:1});
+      if(S.session)render();},2600);
+    return d;
+  },
+  reassign(id,to){
+    const d=docById(id);guard('task:reassign');
+    const t=userById(to);if(!t||t.role!=='finance')throw new E('Penerima harus seorang Finance Reviewer.');
+    if(t.id===d.uploader)throw new E('Pemisahan tugas: reviewer tidak boleh sama dengan pengunggah.');
+    const old=d.reviewer;d.reviewer=to;ev('workload',id,'Tugas dialihkan','Dari '+userById(old).name+' ke '+t.name+'.');
+  },
+  clients(){guard('client:manage');return CLIENTS.map(k=>{const ds=DOCS.filter(d=>d.klien===k);return {name:k,code:KLIEN_CODE[k],docs:ds.length,pics:[...new Set(ds.map(d=>userById(d.owner).name))]};});},
+  addClient(f){guard('client:manage');const n=(f.name||'').trim();
+    if(!n)throw new E('Nama perusahaan wajib diisi.');
+    if(CLIENTS.some(k=>k.toLowerCase()===n.toLowerCase()))throw new E('Klien '+n+' sudah terdaftar.');
+    const code=makeClientCode(n);CLIENTS.push(n);KLIEN_CODE[n]=code;COUNTERS[n]=0;
+    ev('admin','','Klien ditambahkan',n+' (kode voucher '+code+'). PIC Klien dan Intake Support mana pun bisa mengunggah dokumen untuk klien ini.');},
+  users(){guard('user:manage');return USERS.map(u=>({id:u.id,name:u.name,role:u.role,email:u.email,status:u.status}));},
+  register(f){
+    const name=String(f.name||'').trim().slice(0,60),email=String(f.email||'').trim().toLowerCase(),pw=String(f.pw||'');
+    if(name.length<3)throw new E('Isi nama lengkap (minimal 3 huruf).');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new E('Format email tidak valid.');
+    if(USERS.some(x=>x.email===email))throw new E('Email ini sudah terdaftar.');
+    if(pw.length<8)throw new E('Kata sandi minimal 8 karakter.');
+    if(pw!==f.pw2)throw new E('Konfirmasi kata sandi tidak sama.');
+    if(!SELF_ROLES.includes(f.role))throw new E('Pilih peran yang diajukan.');
+    const id='u'+Date.now();
+    USERS.push({id,name,role:f.role,about:'Pendaftar baru, menunggu persetujuan.',email,pw,status:'Menunggu'});
+    REQUESTS.push({id:'R-'+(++REQ_SEQ),type:'register',uid:id,by:id,text:name+' mendaftar sebagai pegawai (peran yang diminta: '+ROLE[f.role].label+').',date:'13 Okt 2026'});
+    EVENTS.push({k:'admin',d:'',t:stamp(),a:name+' (pendaftar)',w:'Pendaftaran pegawai baru',x:email+', peran yang diminta '+ROLE[f.role].label+'. Menunggu persetujuan System Admin.'});
+    return email;},
+  createUser(f){guard('user:manage');
+    const name=String(f.name||'').trim().slice(0,60),email=String(f.email||'').trim().toLowerCase(),pw=String(f.pw||'');
+    if(name.length<3)throw new E('Isi nama lengkap (minimal 3 huruf).');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new E('Format email tidak valid.');
+    if(USERS.some(x=>x.email===email))throw new E('Email ini sudah terdaftar.');
+    if(!ROLE[f.role])throw new E('Pilih peran.');
+    if(pw.length<8)throw new E('Kata sandi awal minimal 8 karakter.');
+    USERS.push({id:'u'+Date.now(),name,role:f.role,about:'Dibuat oleh System Admin.',email,pw,status:'Aktif'});
+    ev('admin','','Akun pegawai dibuat',name+' ('+email+') dengan peran '+ROLE[f.role].label+'.');},
+  setRole(uid,role){const me_=guard('user:manage');if(uid===me_.id)throw new E('Anda tidak bisa mengubah peran akun sendiri.');
+    const t=userById(uid);const old=t.role;t.role=role;ev('admin','','Peran diubah','Akun '+t.name+': '+ROLE[old].label+' menjadi '+ROLE[role].label+'.');},
+  accessDecide(id,ok,role){
+    guard('access:decide');const i=REQUESTS.findIndex(r=>r.id===id);if(i<0)throw new E('Permintaan tidak ditemukan.');const r=REQUESTS[i];
+    if(r.type==='register'){const t=userById(r.uid);
+      if(t){if(ok){const rl=role||t.role;if(!ROLE[rl])throw new E('Peran tidak valid.');t.role=rl;t.status='Aktif';}else t.status='Ditolak';
+        REQUESTS.splice(i,1);ev('admin','',ok?'Pendaftaran pegawai disetujui':'Pendaftaran pegawai ditolak',t.name+(ok?' aktif sebagai '+ROLE[t.role].label+'.':'.'));return;}}
+    REQUESTS.splice(i,1);ev('admin','',ok?'Permintaan akses disetujui':'Permintaan akses ditolak',r.text);
+  },
+  audit(){
+    const u=me();
+    const perm={pic:'audit:read:own',support:'audit:read:delegated',finance:'audit:read:assigned',lead:'audit:read:workload',admin:'audit:read:admin'}[u.role];
+    guard(perm);
+    return EVENTS.filter(e=>{
+      if(u.role==='lead')return e.k==='workload';
+      if(u.role==='admin')return e.k==='admin'||e.k==='security';
+      if(e.k!=='doc')return false;
+      const d=docById(e.d);return d&&can(u,perm,d).ok;
+    }).slice().reverse();
+  },
+  probe(perm,docId){const u=me();const d=docId?docById(docId):null;const r=can(u,perm,d);if(!r.ok)logDeny(u,perm,r.why);return r;}
+};
+
+/* =====================================================================
+   BAGIAN 3. ANTARMUKA PER PERAN
+   Setiap peran punya modul layar sendiri. Hanya modul milik peran yang
+   sedang masuk yang dipasang. Tidak ada pengalih peran.
+   ===================================================================== */
+const IC=(p)=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
+const ICON={
+  queue:IC('<rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/>'),
+  upload:IC('<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>'),
+  review:IC('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M6 9h3M6 13h3M15 9h3M15 13h3"/>'),
+  voucher:IC('<path d="M4 5h16v5a2 2 0 000 4v5H4v-5a2 2 0 000-4z"/><path d="M14 5v14" stroke-dasharray="2 3"/>'),
+  audit:IC('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  users:IC('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 20a6.5 6.5 0 00-3-5.5"/>'),
+  lock:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+  warn:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:3px"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  ok:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M5 12l5 5 9-10"/></svg>',
+  file:'<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>'
+};
+const sKey=s=>s.split(' ')[0];
+function dueHtml(d){
+  if(d.status==='Disetujui'||d.status==='Ditolak')return '<span class="due m">Selesai</span>';
+  const n=dayDiff(d.deadline);
+  if(n<0)return '<span class="due late">Terlambat '+(-n)+' hari</span>';
+  if(n===0)return '<span class="due today">Hari ini</span>';
+  return '<span class="due">'+n+' hari lagi ('+dstr(d.deadline)+')</span>';
+}
+function toast(m,bad){const t=document.getElementById('toast');t.textContent=m;t.classList.toggle('bad',!!bad);t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),3000);}
+function attempt(fn,okMsg){try{const r=fn();if(okMsg)toast(okMsg);render();return r;}catch(e){toast((e.deny?'403 Ditolak. ':'')+e.message,true);render();}}
+
+/* ---- antrean kerja: PIC Klien dan Intake Support ---- */
+function filterBar(rows){
+  const kl=[...new Set(rows.map(d=>d.klien))];
+  const st=['Diproses','Dalam Review','Dikembalikan','Disetujui','Ditolak'];
+  return '<div class="filters"><label class="m" for="fk">Klien</label><select class="inline" id="fk" data-bind="fKlien"><option value="all">Semua klien</option>'+kl.map(k=>'<option'+(S.fKlien===k?' selected':'')+'>'+esc(k)+'</option>').join('')+'</select><span style="width:6px"></span>'+
+    '<button class="chip" data-act="fs" data-v="all" aria-pressed="'+(S.fStatus==='all')+'">Semua status</button>'+st.map(s=>'<button class="chip" data-act="fs" data-v="'+s+'" aria-pressed="'+(S.fStatus===s)+'">'+s+'</button>').join('')+'</div>';
+}
+function vQueueClient(){
+  const u=me(),all=api.queue();
+  const rows=all.filter(d=>(S.fKlien==='all'||d.klien===S.fKlien)&&(S.fStatus==='all'||d.status===S.fStatus));
+  const c=s=>all.filter(d=>d.status===s).length;
+  const dl=u.role==='support'?'<section class="card"><h2>Cara kerja Intake Support</h2><p class="sub" style="margin-bottom:0">Anda bisa mengunggah dokumen dari klien mana pun atas order PIC Klien yang meminta. Dokumen yang dikembalikan Finance muncul di antrean ini untuk Anda perbaiki lalu kirim ulang.</p></section>':'';
+  const list=rows.map(d=>{
+    const open=d.status!=='Disetujui'&&d.status!=='Ditolak';
+    let act;
+    if(d.status==='Dikembalikan')act='<button class="btn sm pink" data-act="fix" data-id="'+d.id+'">Perbaiki</button>';
+    else if(open&&!d.taxSet)act='<button class="btn sm pink" data-act="tax-open" data-id="'+d.id+'">Atur pajak</button>';
+    else if(d.status==='Disetujui')act='<button class="btn sm" data-act="open-voucher" data-id="'+d.id+'">Lihat voucher</button>';
+    else act='<button class="btn sm" data-act="trace" data-id="'+d.id+'">Lacak</button>';
+    const issue=d.issue&&d.status==='Dikembalikan'?'<div class="issue">'+ICON.warn+'<span>'+esc(d.issue)+'</span></div>':d.voucherNo?'<div class="m">No. voucher <b>'+esc(d.voucherNo)+'</b></div>':(open&&!d.taxSet)?'<div class="issue" style="color:var(--warn)">'+ICON.warn+'<span>Pajak voucher belum diatur</span></div>':'<div class="none">Tidak ada kendala</div>';
+    return '<div class="q"><div><div class="t">'+esc(d.no)+'</div><div class="m">'+esc(d.klien)+'</div></div><div><div>'+esc(d.jenis)+'</div><div class="m">PIC '+esc(userById(d.owner).name)+'</div></div><div><span class="badge s-'+sKey(d.status)+'">'+esc(d.status)+'</span></div><div>'+dueHtml(d)+'</div><div>'+issue+'</div><div>'+act+'</div></div>';
+  }).join('')||'<div class="empty"><b>'+(all.length?'Tidak ada dokumen yang cocok':'Belum ada dokumen di cakupan Anda')+'</b>'+(all.length?'Ubah penyaring untuk melihat antrean lain.':'Unggah invoice lewat tab Unggah dan pajak.')+'</div>';
+  return dl+'<div class="kpis"><div class="kpi"><b>'+all.length+'</b><span>Dokumen Anda</span></div><div class="kpi warn"><b>'+c('Dikembalikan')+'</b><span>Dikembalikan, perlu diperbaiki</span></div><div class="kpi"><b>'+all.filter(d=>d.status!=='Disetujui'&&d.status!=='Ditolak'&&!d.taxSet).length+'</b><span>Pajak belum diatur</span></div><div class="kpi good"><b>'+c('Disetujui')+'</b><span>Voucher terbit</span></div></div>'+
+    '<section class="card"><h2>'+(u.role==='pic'?'Antrean order saya':'Antrean Intake Support')+'</h2><p class="sub">Dokumen yang dikembalikan Finance untuk diperbaiki ditandai merah.</p>'+filterBar(all)+'<div class="queue">'+list+'</div></section>';
+}
+
+/* ---- antrean kerja: Finance Reviewer ---- */
+function vQueueFinance(){
+  const all=api.queue();
+  const list=all.map(d=>'<div class="q" style="grid-template-columns:1.6fr 1.2fr 1fr 1.2fr auto"><div><div class="t">'+esc(d.no)+'</div><div class="m">'+esc(d.klien)+'</div></div><div>'+esc(d.jenis)+'</div><div><span class="badge s-'+sKey(d.status)+'">'+esc(d.status)+'</span></div><div>'+dueHtml(d)+'</div><div><button class="btn sm primary" data-act="open-review" data-id="'+d.id+'">Tinjau</button></div></div>').join('')||'<div class="empty"><b>Tidak ada tugas review</b>Dokumen yang lolos pemeriksaan robot dan ditugaskan kepada Anda akan muncul di sini.</div>';
+  return '<div class="kpis"><div class="kpi"><b>'+all.length+'</b><span>Tugas review Anda</span></div><div class="kpi warn"><b>'+all.filter(d=>dayDiff(d.deadline)<=0).length+'</b><span>Jatuh tempo hari ini atau lewat</span></div></div>'+
+    '<section class="card"><h2>Tugas review saya</h2><p class="sub">Hanya dokumen yang ditugaskan kepada Anda. Dokumen yang Anda unggah sendiri tidak pernah muncul di sini.</p><div class="queue">'+list+'</div></section>';
+}
+
+/* ---- antrean kerja: Service Lead (tanpa isi dokumen) ---- */
+function vQueueLead(){
+  const all=api.queue();
+  const fin=activeUsers('finance');
+  const open=d=>['Dalam Review','Dikembalikan','Diproses'].includes(d.status);
+  const rows=all.map(d=>{
+    const opts=fin.map(f=>'<option value="'+f.id+'"'+(d.reviewer===f.id?' selected':'')+(f.id===d.uploader?' disabled':'')+'>'+esc(f.name)+(f.id===d.uploader?' (pengunggah)':'')+'</option>').join('');
+    return '<tr><td><b>'+esc(d.no)+'</b><div class="m">'+esc(d.klien)+'</div></td><td><span class="badge s-'+sKey(d.status)+'">'+esc(d.status)+'</span></td><td>'+dueHtml(d)+'</td><td>'+(d.conflict?'<span class="badge s-Konflik">Konflik penugasan</span>':'<span class="m">Aman</span>')+'</td><td>'+(open(d)?'<select class="inline" data-bind="assign" data-id="'+d.id+'" aria-label="Alihkan '+esc(d.no)+'">'+opts+'</select>':'<span class="m">Selesai</span>')+'</td></tr>';
+  }).join('');
+  return '<div class="kpis">'+fin.map(f=>'<div class="kpi"><b>'+all.filter(d=>d.reviewer===f.id&&open(d)).length+'</b><span>Tugas terbuka: '+esc(f.name)+'</span></div>').join('')+'<div class="kpi warn"><b>'+all.filter(d=>d.conflict).length+'</b><span>Konflik penugasan</span></div></div>'+
+    '<section class="card"><h2>Beban kerja tim</h2><p class="sub">Layar ini hanya memuat status dan penugasan. Nilai transaksi dan isi dokumen tidak dikirim ke peran Anda.</p><div class="tblw"><table class="tbl"><thead><tr><th>Dokumen</th><th>Status</th><th>Tenggat</th><th>Penugasan</th><th>Reviewer</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+}
+
+/* ---- antrean kerja: System Admin (permintaan akses) ---- */
+function regRoleSel(x){const t=userById(x.uid),cur=S.apvRole[x.id]||(t?t.role:'support');
+  return '<select class="inline" data-bind="apvrole" data-id="'+x.id+'" aria-label="Peran untuk '+esc(t?t.name:'pendaftar')+'">'+Object.keys(ROLE).map(k=>'<option value="'+k+'"'+(cur===k?' selected':'')+'>'+ROLE[k].label+'</option>').join('')+'</select>';}
+function vQueueAdmin(){
+  const r=api.queue();
+  return '<div class="kpis"><div class="kpi warn"><b>'+r.length+'</b><span>Permintaan akses menunggu</span></div></div>'+
+    '<section class="card"><h2>Pendaftaran dan permintaan akses</h2><p class="sub">Pendaftaran pegawai baru menunggu persetujuan Anda di sini. Tetapkan peran akhir sebelum menyetujui. Setiap keputusan dicatat di riwayat audit. Layar ini tidak memuat dokumen atau transaksi.</p>'+
+    (r.length?'<div class="queue">'+r.map(x=>'<div class="q" style="grid-template-columns:1fr auto"><div><div class="t">'+esc(x.text)+'</div><div class="m">'+esc(x.id)+', diajukan '+esc(x.date)+'</div></div><div class="actions" style="margin:0">'+(x.type==='register'?regRoleSel(x):'')+'<button class="btn sm primary" data-act="acc-ok" data-id="'+x.id+'">Setujui</button><button class="btn sm danger" data-act="acc-no" data-id="'+x.id+'">Tolak</button></div></div>').join('')+'</div>':'<div class="empty"><b>Tidak ada permintaan</b>Permintaan akses baru akan muncul di sini.</div>')+'</section>';
+}
+function vUsers(){
+  const me_=me(),us=api.users(),f=S.nu;
+  const roleOpt=Object.keys(ROLE).map(r=>'<option value="'+r+'"'+(f.role===r?' selected':'')+'>'+ROLE[r].label+'</option>').join('');
+  return '<section class="card"><h2>Buat akun pegawai</h2><p class="sub">Pegawai juga bisa mendaftar sendiri lewat halaman masuk. Pendaftaran muncul di tab Pendaftaran dan akses, dan baru aktif setelah Anda setujui. Gunakan form ini jika Anda ingin membuat akun langsung.</p>'+
+    '<div class="form"><label>Nama lengkap<input type="text" data-bind="nu.name" value="'+esc(f.name)+'" placeholder="Contoh: Maya Sartika"></label><label>Email<input type="text" inputmode="email" data-bind="nu.email" value="'+esc(f.email)+'" placeholder="nama@perusahaan.com"></label>'+
+    '<label>Peran<select data-bind="nu.role">'+roleOpt+'</select></label><label>Kata sandi awal <small>(minimal 8 karakter)</small><input type="text" data-bind="nu.pw" value="'+esc(f.pw)+'" placeholder="Sampaikan ke pegawai"></label></div>'+
+    '<div class="actions" style="margin-top:16px"><button class="btn primary" data-act="add-user">Buat akun</button></div></section>'+
+    '<section class="card"><h2>Akun pegawai</h2><p class="sub">Perubahan peran berlaku saat pengguna masuk berikutnya. Akun berstatus Menunggu belum bisa masuk.</p><div class="tblw"><table class="tbl"><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Peran</th></tr></thead><tbody>'+
+    us.map(u=>'<tr><td>'+esc(u.name)+(u.id===me_.id?' <span class="m">(Anda)</span>':'')+'</td><td>'+esc(u.email)+'</td><td><span class="badge s-'+esc(u.status)+'">'+esc(u.status)+'</span></td><td><select class="inline" data-bind="setrole" data-id="'+u.id+'" '+(u.id===me_.id?'disabled':'')+' aria-label="Peran '+esc(u.name)+'">'+Object.keys(ROLE).map(k=>'<option value="'+k+'"'+(u.role===k?' selected':'')+'>'+ROLE[k].label+'</option>').join('')+'</select></td></tr>').join('')+'</tbody></table></div></section>';
+}
+
+/* ---- unggah: PIC Klien dan Intake Support ---- */
+function vUpload(){
+  const u=me(),f=S.up,e=f.errs,klien=api.klienOptions(),isSup=u.role==='support',pics=isSup?api.picOptions():[];
+  const ready=f.klien&&f.jenis&&(!isSup||f.pic);
+  const now=!f.file?1:!ready?2:3;
+  const st=(n,t)=>'<div class="step '+(n<now?'done':n===now?'now':'')+'"><i>'+(n<now?'&#10003;':n)+'</i>'+t+'</div>';
+  const sel=(k,ph,opts)=>'<select data-bind="up.'+k+'"><option value="">'+ph+'</option>'+opts.map(o=>'<option'+(f[k]===o?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'+(e[k]?'<span class="err-t">'+e[k]+'</span>':'');
+  const picSel=isSup?'<label>PIC Klien pemesan<select data-bind="up.pic"><option value="">Pilih PIC</option>'+pics.map(p=>'<option value="'+p.id+'"'+(f.pic===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select>'+(e.pic?'<span class="err-t">'+e.pic+'</span>':'')+'</label>':'';
+  const blocked=!klien.length||(isSup&&!pics.length);
+  return '<section class="card"><div class="steps">'+st(1,'Pilih file PDF')+'<span class="m">/</span>'+st(2,'Isi metadata')+'<span class="m">/</span>'+st(3,'Atur pajak voucher')+'</div>'+
+    '<div class="delegate" style="margin:12px 0">'+ICON.lock+'<span>'+(isSup?'Anda bisa mengunggah dokumen dari klien mana pun. Pilih PIC Klien yang menerima order tersebut, dokumen akan tercatat sebagai order PIC itu.':'Anda bisa mengunggah dokumen dari klien mana pun. Dokumen tercatat sebagai order Anda, dan Anda tidak terikat pada satu klien.')+'</span></div>'+
+    (blocked?'<div class="banner block">'+ICON.lock+'<span>Belum ada klien atau PIC Klien aktif yang bisa dipilih. Hubungi System Admin.</span></div>':'')+
+    '<label class="drop'+(f.file?' has':'')+'" id="drop"><input type="file" accept="application/pdf,.pdf" data-bind="file" hidden>'+ICON.file+(f.file?'<b>'+esc(f.file)+'</b><span>Klik untuk mengganti file</span>':'<b>Tarik PDF invoice ke sini</b><span>atau klik untuk memilih file dari perangkat Anda</span>')+'</label>'+(e.file?'<div class="err-t" style="margin-top:8px">'+e.file+'</div>':'')+
+    '<div class="form" style="margin-top:20px"><label>Klien'+sel('klien','Pilih klien',klien)+'</label>'+picSel+'<label>Jenis permintaan'+sel('jenis','Pilih jenis',['Pembayaran vendor','Reimburse','Pajak','Payroll'])+'</label>'+
+    '<label>Tanggal diterima<input type="date" value="'+esc(f.tgl)+'" data-bind="up.tgl"></label><label class="full">Catatan untuk reviewer <small>(opsional)</small><textarea rows="3" data-bind="up.cat" placeholder="Contoh: invoice ini sudah ditagih dua kali bulan lalu.">'+esc(f.cat)+'</textarea></label></div>'+
+    '<div class="actions" style="margin-top:20px"><button class="btn primary" data-act="submit-up" '+(blocked?'disabled':'')+'>Kirim, lanjut atur pajak</button><button class="btn" data-act="reset-up">Kosongkan formulir</button></div></section>';
+}
+
+/* ---- tinjau: Finance Reviewer ---- */
+function taxCard(d){const bd=computeTaxes(d.f.dpp,d.tax||[]);
+  return '<div class="fld ok" style="border-left-color:'+(d.tax?'var(--teal)':'var(--warn)')+'"><div class="lbl"><span>Pajak dan nominal voucher</span><em>diatur oleh PIC Klien atau Intake Support</em></div>'+
+  (d.tax?(bd.lines.length?'':'<div class="m">Tanpa pajak</div>')+bd.lines.map(l=>'<div class="sumrow" style="padding:3px 0"><span>'+esc(l.label)+' '+l.rate+'%</span><span>'+(l.kind==='add'?'+':'-')+' '+rp(l.amount)+'</span></div>').join('')+'<div class="sumrow" style="padding:3px 0;font-weight:700;border-bottom:0"><span>Nominal voucher</span><span>'+rp(bd.net)+'</span></div><div class="m">Penyetuju: '+d.approvers+' pihak</div>':'<div class="msg" style="color:var(--warn)">'+ICON.warn+'<span>Pajak belum diatur. Voucher belum bisa diterbitkan.</span></div>')+'</div>';}
+function paperHtml(d){const s=d.src;return '<div class="paper"><h3>INVOICE</h3><div style="color:#777;margin-bottom:10px">'+esc(s.vendor)+'</div>'+
+    '<div class="row2" data-src="no"><span>Nomor</span><span>'+esc(s.no)+'</span></div><div class="row2" data-src="tgl"><span>Tanggal</span><span>'+dstr(s.tgl)+'</span></div><div class="row2" data-src="vendor"><span>Kepada</span><span>'+esc(d.klien)+'</span></div><div class="row2" data-src="npwp"><span>NPWP</span><span>'+esc(s.npwp)+'</span></div><hr>'+
+    '<table><tr><th>Uraian</th><th>Jumlah</th></tr><tr><td>Jasa layanan periode Oktober</td><td>'+rp(Math.round(s.dpp*.7))+'</td></tr><tr><td>Biaya tambahan</td><td>'+rp(s.dpp-Math.round(s.dpp*.7))+'</td></tr></table>'+
+    '<div class="row2" data-src="dpp"><span>DPP</span><span>'+rp(s.dpp)+'</span></div><div class="row2" data-src="ppn"><span>PPN 11%</span><span>'+rp(s.ppn)+'</span></div><div class="row2" data-src="total"><span><b>Total</b></span><span><b>'+rp(s.total)+'</b></span></div><hr><div class="row2" data-src="rek"><span>Transfer ke</span><span>'+esc(s.rek)+'</span></div></div>';}
+function vReview(){
+  if(!S.sel)return '<section class="card"><div class="empty"><b>Pilih tugas dari antrean</b>Buka tab Tugas review, lalu tekan Tinjau pada dokumen yang ingin diperiksa.</div></section>';
+  const d=api.getDoc(S.sel),v=validate(d),t=tally(v),s=d.src;
+  const pdf=paperHtml(d);
+  const flds=FIELDS.map(x=>{const k=x[0],r=v[k];return '<div class="fld '+r.s+'"><div class="lbl"><label for="f-'+k+'">'+x[1]+'</label><em>Keyakinan '+Math.round(d.conf[k]*100)+'%</em></div><input type="text" id="f-'+k+'" data-k="'+k+'" data-bind="field" '+(x[2]==='num'?'inputmode="numeric" ':'')+'value="'+esc(d.f[k])+'"><div class="msg">'+(r.s==='ok'?ICON.ok:ICON.warn)+'<span>'+esc(r.m)+'</span></div></div>';}).join('');
+  return '<div class="split"><section class="card"><div class="pane-h"><h2>Dokumen asli</h2><span class="m">'+esc(d.id)+', '+esc(d.klien)+'</span></div>'+pdf+'</section>'+
+    '<section class="card"><div class="pane-h"><h2>Data ekstraksi</h2></div><div class="sumbar"><span class="pill ok">'+t.ok+' sesuai</span><span class="pill warn">'+t.warn+' perlu dicek</span><span class="pill err">'+t.err+' bermasalah</span></div>'+
+    (d.note?'<div class="banner info"><span>Catatan dari Intake Support atau pengunggah: '+esc(d.note)+'</span></div>':'')+flds+taxCard(d)+
+    '<div class="reason"><label>Alasan <small class="m">(wajib untuk menolak atau mengembalikan)</small><textarea rows="2" data-bind="reason" placeholder="Tulis apa yang perlu diperbaiki atau alasan penolakan">'+esc(S.reason)+'</textarea></label></div>'+
+    '<div class="actions"><button class="btn primary" data-act="approve" '+((t.err||!d.tax)?'disabled':'')+'>Setujui hasil ekstraksi</button><button class="btn" data-act="return">Kembalikan ke Intake Support</button><button class="btn danger" data-act="reject">Tolak</button></div>'+
+    (t.err?'<p class="m" style="margin:10px 0 0">Selesaikan field bermasalah dulu sebelum menyetujui.</p>':'')+'</section></div>';
+}
+
+/* ---- perbaiki dokumen yang dikembalikan Finance: Intake Support dan PIC Klien ---- */
+function vFix(){
+  if(!S.sel)return '<section class="card"><div class="empty"><b>Pilih dokumen dulu</b>Tekan Perbaiki pada dokumen yang dikembalikan di antrean.</div></section>';
+  const d=api.getFixDoc(S.sel);
+  if(d.status!=='Dikembalikan')return '<section class="card"><div class="empty"><b>Dokumen ini tidak perlu diperbaiki</b>Status saat ini: '+esc(d.status)+'.</div></section>';
+  const v=validate(d),t=tally(v),bd=computeTaxes(d.f.dpp,d.tax||[]);
+  const flds=FIELDS.map(x=>{const k=x[0],r=v[k];return '<div class="fld '+r.s+'"><div class="lbl"><label for="f-'+k+'">'+x[1]+'</label><em>Keyakinan '+Math.round(d.conf[k]*100)+'%</em></div><input type="text" id="f-'+k+'" data-k="'+k+'" data-bind="field" '+(x[2]==='num'?'inputmode="numeric" ':'')+'value="'+esc(d.f[k])+'"><div class="msg">'+(r.s==='ok'?ICON.ok:ICON.warn)+'<span>'+esc(r.m)+'</span></div></div>';}).join('');
+  const taxBox='<div class="fld ok" style="border-left-color:'+(d.tax?'var(--teal)':'var(--warn)')+'"><div class="lbl"><span>Pajak dan nominal voucher</span><button class="btn sm pink" data-act="tax-open" data-id="'+d.id+'">'+(d.tax?'Ubah pajak':'Atur pajak')+'</button></div>'+
+    (d.tax?(bd.lines.length?'':'<div class="m">Tanpa pajak</div>')+bd.lines.map(l=>'<div class="sumrow" style="padding:3px 0"><span>'+esc(l.label)+' '+l.rate+'%</span><span>'+(l.kind==='add'?'+':'-')+' '+rp(l.amount)+'</span></div>').join('')+'<div class="sumrow" style="padding:3px 0;font-weight:700;border-bottom:0"><span>Nominal akhir</span><span>'+rp(bd.net)+'</span></div>':'<div class="msg" style="color:var(--warn)">'+ICON.warn+'<span>Pajak belum diatur. Atur dulu sebelum mengirim ulang.</span></div>')+'</div>';
+  return '<div class="split"><section class="card"><div class="pane-h"><h2>Dokumen asli</h2><span class="m">'+esc(d.id)+', '+esc(d.klien)+'</span></div>'+paperHtml(d)+'</section>'+
+    '<section class="card"><div class="pane-h"><h2>Perbaiki data</h2></div><div class="banner block">'+ICON.warn+'<span><b>Dikembalikan:</b> '+esc(d.issue||'Perlu perbaikan.')+'</span></div>'+
+    '<div class="sumbar"><span class="pill ok">'+t.ok+' sesuai</span><span class="pill warn">'+t.warn+' perlu dicek</span><span class="pill err">'+t.err+' bermasalah</span></div>'+flds+taxBox+
+    '<div class="reason"><label>Catatan untuk Finance Reviewer <small class="m">(opsional)</small><textarea rows="2" data-bind="reason" placeholder="Jelaskan apa yang sudah diperbaiki">'+esc(S.reason)+'</textarea></label></div>'+
+    '<div class="actions"><button class="btn primary" data-act="resubmit" '+((t.err||!d.tax)?'disabled':'')+'>Kirim ulang ke Finance</button><button class="btn" data-act="go" data-v="queue">Kembali ke antrean</button></div>'+
+    ((t.err||!d.tax)?'<p class="m" style="margin:10px 0 0">Selesaikan field bermasalah dan atur pajak dulu sebelum mengirim ulang.</p>':'')+'</section></div>';
+}
+
+/* ---- pajak voucher: PIC Klien dan Intake Support ---- */
+function initTax(id){const d=api.getTaxDoc(id);const sel={};
+  TAX_PRESETS.forEach(p=>{const sv=d.tax&&d.tax.find(t=>t.code===p.code);sel[p.code]={on:sv?true:(!d.tax&&p.code==='PPN'&&d.ppnInvoice>0),rate:String(sv?sv.rate:p.rate)};});
+  S.taxf={id,sel,custom:(d.tax||[]).filter(t=>!TAX_PRESETS.some(p=>p.code===t.code)),nc:{label:'',rate:'',kind:'withhold'},approvers:d.approvers,err:''};}
+function taxLines(){const t=S.taxf;return TAX_PRESETS.filter(p=>t.sel[p.code].on).map(p=>({code:p.code,label:p.label,rate:Number(String(t.sel[p.code].rate).replace(',','.')),kind:p.kind})).concat(t.custom);}
+function vTax(){
+  if(!S.sel)return '<section class="card"><div class="empty"><b>Pilih dokumen dulu</b>Unggah dokumen atau tekan Atur pajak pada dokumen di antrean.</div></section>';
+  const d=api.getTaxDoc(S.sel);
+  if(!S.taxf||S.taxf.id!==S.sel)initTax(S.sel);
+  const t=S.taxf,num=x=>Number(String(x).replace(',','.')),lines=taxLines();
+  const bad=lines.some(l=>!isFinite(l.rate)||l.rate<=0||l.rate>100),bd=computeTaxes(d.dpp,bad?[]:lines);
+  const tag=k=>'<span class="tag '+k+'">'+(k==='add'?'ditambah':'dipotong')+'</span>';
+  const rows=TAX_PRESETS.map(p=>{const x=t.sel[p.code],amt=Math.round(d.dpp*(num(x.rate)||0)/100);
+    return '<div class="taxrow'+(x.on?' on':'')+'"><label class="taxchk"><input type="checkbox" data-bind="tax.on" data-code="'+p.code+'"'+(x.on?' checked':'')+'><span><b>'+p.label+'</b> '+tag(p.kind)+'<small>'+p.hint+'</small></span></label><label class="rate"><input type="text" inputmode="decimal" data-bind="tax.rate" data-code="'+p.code+'" value="'+esc(x.rate)+'"'+(x.on?'':' disabled')+' aria-label="Tarif '+p.label+'"><span>%</span></label><div class="amt">'+(x.on?(p.kind==='add'?'+':'-')+' '+rp(amt):'')+'</div></div>';}).join('');
+  const cus=t.custom.map((c,i)=>'<div class="taxrow on"><div class="taxchk"><span><b>'+esc(c.label)+'</b> '+tag(c.kind)+'<small>Pajak lain, tarif '+c.rate+'%</small></span></div><button class="btn sm" data-act="tax-del" data-i="'+i+'">Hapus</button><div class="amt">'+(c.kind==='add'?'+':'-')+' '+rp(Math.round(d.dpp*c.rate/100))+'</div></div>').join('');
+  const sum=bd.lines.map(l=>'<div class="sumrow"><span>'+esc(l.label)+' '+l.rate+'%</span><span>'+(l.kind==='add'?'+':'-')+' '+rp(l.amount)+'</span></div>').join('')||'<div class="sumrow m"><span>Tanpa pajak</span><span></span></div>';
+  return '<div class="split"><section class="card"><div class="pane-h"><h2>Pilih pajak</h2><span class="m">'+esc(d.no)+', '+esc(d.klien)+'</span></div>'+
+    '<p class="sub" style="margin-top:0">Centang pajak yang berlaku untuk invoice ini. Semua dihitung dari DPP. Tarif adalah nilai awal dan bisa Anda ubah.</p><div class="banner info"><span>Tarif awal hanya contoh. Pastikan sesuai ketentuan yang berlaku dan konfirmasi ke tim pajak AMIGA bila ragu.</span></div>'+rows+cus+
+    '<div class="taxadd"><b>Pajak lainnya</b><div class="taxaddrow"><input type="text" placeholder="Nama pajak" data-bind="tax.nl" value="'+esc(t.nc.label)+'" aria-label="Nama pajak lain"><input type="text" inputmode="decimal" placeholder="Tarif %" data-bind="tax.nr" value="'+esc(t.nc.rate)+'" aria-label="Tarif pajak lain"><select data-bind="tax.nk" aria-label="Jenis pajak lain"><option value="withhold"'+(t.nc.kind==='withhold'?' selected':'')+'>Dipotong</option><option value="add"'+(t.nc.kind==='add'?' selected':'')+'>Ditambah</option></select><button class="btn sm" data-act="tax-add">Tambah</button></div>'+(t.err?'<span class="err-t">'+t.err+'</span>':'')+'</div></section>'+
+    '<section class="card taxsum"><div class="pane-h"><h2>Nominal voucher</h2></div><div class="sumrow"><span>DPP (dari invoice)</span><span>'+rp(d.dpp)+'</span></div>'+sum+'<div class="sumrow big"><span>Nominal voucher</span><span>'+rp(bd.net)+'</span></div>'+
+    '<fieldset class="approvers"><legend>Penyetuju voucher (BOD)</legend><label><input type="radio" name="apv" data-bind="tax.apv" value="1"'+(t.approvers===1?' checked':'')+'> 1 pihak</label><label><input type="radio" name="apv" data-bind="tax.apv" value="2"'+(t.approvers===2?' checked':'')+'> 2 pihak</label><small class="m">Menentukan jumlah kotak tanda tangan "disetujui oleh" di voucher.</small></fieldset>'+
+    '<div class="actions" style="margin-top:14px"><button class="btn primary" data-act="tax-save">Simpan pajak</button><button class="btn" data-act="go" data-v="queue">Nanti saja</button></div><p class="m" style="margin:10px 0 0">'+ICON.lock+' Nomor voucher baru diberikan saat Finance menyetujui dokumen.</p></section></div>';
+}
+
+/* ---- voucher pengeluaran: PIC Klien (unduh), Intake Support (lihat), Finance Reviewer (pratinjau) ---- */
+ICON.clients=ICON.users||ICON.queue;
+function vClients(){
+  const cl=api.clients(),f=S.nc;
+  return '<section class="card"><h2>Tambah klien</h2><p class="sub">Hanya System Admin yang bisa mendaftarkan klien. Setelah terdaftar, PIC Klien dan Intake Support mana pun bisa mengunggah dokumen untuk klien ini.</p>'+
+    '<div class="form"><label class="full">Nama perusahaan<input type="text" data-bind="nc.name" value="'+esc(f.name)+'" placeholder="Contoh: PT Sumber Makmur"></label></div>'+
+    '<div class="actions" style="margin-top:16px"><button class="btn primary" data-act="add-client">Tambah klien</button></div></section>'+
+    '<section class="card"><h2>Daftar klien</h2><p class="sub">Klien tidak terikat pada satu PIC. Kolom PIC menampilkan siapa saja yang pernah membawa order dari klien ini. Isi dokumen tidak ditampilkan di layar ini.</p><div class="tblw"><table class="tbl"><thead><tr><th>Perusahaan</th><th>Kode voucher</th><th>PIC yang membawa order</th><th>Dokumen</th></tr></thead><tbody>'+
+    cl.map(c=>'<tr><td><b>'+esc(c.name)+'</b></td><td>'+esc(c.code)+'</td><td>'+(c.pics.length?esc(c.pics.join(', ')):'<span class="m">Belum ada order</span>')+'</td><td>'+c.docs+'</td></tr>').join('')+'</tbody></table></div></section>';
+}
+function vVoucher(){
+  const u=me(),list=api.vouchers();
+  if(!list.length)return '<section class="card"><div class="empty"><b>Belum ada voucher</b>'+(u.role==='finance'?'Voucher muncul di sini setelah Anda menyetujui dokumen.':'Voucher baru muncul di sini setelah Finance Reviewer menyetujui dokumen.')+'</div></section>';
+  if(!S.sel||!list.some(x=>x.id===S.sel))S.sel=list[0].id;
+  const v=api.getVoucher(S.sel),ok=v.status==='Disetujui',money=n=>n<0?'- '+rp(-n):rp(n);
+  const meta=[['nomor',v.number||'Belum diterbitkan'],['nama',v.nama],['perusahaan',v.perusahaan],['tanggal/periode',v.periode],['rincian pajak',v.taxText],['nominal akhir',rp(v.nominal)]];
+  const rows=v.rows.map(r=>'<tr class="'+(r.tax?'vs-tax':r.sub?'vs-sub':'')+'"><td class="c">'+esc(r.no)+'</td><td class="c">'+esc(r.tgl)+'</td><td>'+esc(r.ket)+'</td><td class="c">'+esc(r.jumlah)+'</td><td class="r">'+money(r.harga)+'</td></tr>').join('');
+  const tfoot=(v.add?'<tr class="vs-tax"><td colspan="4" class="c">total pajak ditambahkan</td><td class="r">+ '+rp(v.add)+'</td></tr>':'')+(v.withhold?'<tr class="vs-tax"><td colspan="4" class="c">total pajak dipotong</td><td class="r">- '+rp(v.withhold)+'</td></tr>':'')+'<tr class="vs-total"><td colspan="4" class="c">total yang dibayarkan</td><td class="r">'+rp(v.total)+'</td></tr>';
+  let apv='';for(let i=0;i<v.approvers;i++)apv+='<div><div class="vs-box"><span>disetujui oleh</span></div><div class="vs-role">BOD</div>'+(ok?'<div class="vs-name">Diperiksa Finance: '+esc(v.reviewer)+'</div>':'')+'</div>';
+  return '<div class="filters" style="margin-bottom:0"><label class="m" for="vv">Dokumen</label><select class="inline" id="vv" data-bind="sel">'+list.map(x=>'<option value="'+x.id+'"'+(x.id===S.sel?' selected':'')+'>'+(x.voucherNo?esc(x.voucherNo)+' - ':'')+esc(x.no)+' - '+esc(x.klien)+'</option>').join('')+'</select></div>'+
+    '<div class="voucher vwide"><div class="paper vpaper">'+(ok?'':'<div class="mark"><span>DRAF</span></div>')+
+    '<div class="vs"><div class="vs-title">Voucher pengeluaran</div>'+meta.map(m=>'<div class="vs-meta"><div class="vs-l">'+m[0]+'</div><div class="vs-v">'+esc(m[1])+'</div></div>').join('')+
+    '<table class="vs-table"><colgroup><col style="width:6%"><col style="width:17%"><col style="width:33%"><col style="width:16%"><col style="width:28%"></colgroup><thead><tr><th>no</th><th>tanggal</th><th>keterangan</th><th>jumlah</th><th>harga</th></tr></thead><tbody>'+rows+'</tbody><tfoot>'+tfoot+'</tfoot></table></div>'+
+    '<div class="vs-sign"><div><div class="vs-box"><span>diajukan oleh</span></div><div class="vs-role">admin</div><div class="vs-name">'+esc(v.submitter)+'</div></div><div class="vs-approve a'+v.approvers+'">'+apv+'</div></div>'+
+    '<p class="vs-note">Voucher ini adalah dokumen pendukung. Persetujuan pembayaran dilakukan oleh pihak yang bertanda tangan di luar aplikasi AMIGA.</p></div>'+
+    (u.role==='pic'?'<div class="actions" style="justify-content:center;margin-top:16px"><button class="btn primary" data-act="download"'+(ok?'':' disabled')+'>Unduh PDF</button></div>':'<p class="m" style="text-align:center;margin:12px 0 0">Anda hanya bisa melihat voucher. Pengunduhan hanya untuk PIC Klien pemilik dokumen.</p>')+'</div>';
+}
+
+/* ---- riwayat audit: setiap peran hanya melihat catatannya sendiri ---- */
+function vAudit(){
+  const u=me(),ev_=api.audit();
+  const ids=[...new Set(ev_.filter(e=>e.d).map(e=>e.d))];
+  const showFilter=['pic','support','finance'].includes(u.role)&&ids.length;
+  const ordered=ev_.filter(e=>S.auditDoc==='all'||e.d===S.auditDoc);
+  const sub={pic:'Hanya aktivitas pada dokumen klien yang Anda tangani.',support:'Hanya aktivitas pada klien yang didelegasikan kepada Anda.',finance:'Hanya aktivitas pada tugas review yang ditugaskan kepada Anda.',lead:'Hanya catatan penugasan dan beban kerja. Isi dokumen tidak dicatat di sini.',admin:'Perubahan akun, peran, delegasi, dan upaya akses yang ditolak.'}[u.role];
+  return '<section class="card"><h2>Riwayat audit</h2><p class="sub">'+sub+'</p>'+
+    (showFilter?'<div class="filters"><label class="m" for="au">Dokumen</label><select class="inline" id="au" data-bind="auditDoc"><option value="all">Semua dokumen Anda</option>'+ids.map(id=>'<option value="'+id+'"'+(S.auditDoc===id?' selected':'')+'>'+esc(docById(id).no)+' - '+esc(docById(id).klien)+'</option>').join('')+'</select></div>':'')+
+    (ordered.length?'<ul class="tl">'+ordered.map(e=>{const d=e.d?docById(e.d):null;return '<li class="'+(e.k==='security'?'sec':e.bot?'bot':'')+'"><div class="when">'+esc(e.t)+' oleh '+esc(e.a)+(d&&S.auditDoc==='all'?', '+esc(d.no):'')+'</div><div class="what">'+esc(e.w)+'</div>'+(e.x?'<div class="det">'+esc(e.x)+'</div>':'')+'</li>';}).join('')+'</ul>':'<div class="empty"><b>Belum ada aktivitas</b>Aktivitas di cakupan Anda akan muncul di sini.</div>')+'</section>';
+}
+
+/* ---- modul per peran ---- */
+const KLIEN_WS={h:'Dokumen Anda, dari unggah sampai voucher',p:'Unggah invoice dari klien mana pun, atur pajak, perbaiki dokumen yang dikembalikan, dan lihat atau unduh voucher yang sudah disetujui.',scope:'',
+  screens:[['queue','Antrean',vQueueClient],['upload','Unggah dan pajak',vUpload],['voucher','Voucher',vVoucher],['audit','Riwayat audit',vAudit]],hidden:[['tax','Atur pajak',vTax],['fixdoc','Perbaiki dokumen',vFix]]};
+const UI={
+  pic:Object.assign({},KLIEN_WS,{scope:'Anda tidak terikat pada satu klien. Anda melihat dokumen dari order yang masuk lewat Anda, klien apa pun itu. Anda tidak bisa meninjau dokumen yang Anda unggah sendiri.'}),
+  support:Object.assign({},KLIEN_WS,{h:'Unggah untuk klien mana pun',p:'Unggah dokumen dari klien mana pun atas order PIC Klien, atur pajak, dan perbaiki dokumen yang dikembalikan Finance.',scope:'Anda melihat dokumen yang Anda unggah dan dokumen yang dikembalikan untuk diperbaiki. Voucher hanya bisa dilihat setelah Finance menyetujui, dan tidak bisa diunduh.'}),
+  finance:{h:'Tugas review Anda',p:'Periksa, koreksi, dan setujui hasil ekstraksi. Dokumen bermasalah bisa dikembalikan ke Intake Support untuk diperbaiki.',scope:'Anda hanya melihat tugas yang ditugaskan kepada Anda. Dokumen yang Anda unggah sendiri tidak bisa Anda tinjau. Voucher baru terbit setelah Anda menyetujui dokumen.',
+    screens:[['queue','Tugas review',vQueueFinance],['review','Tinjau dokumen',vReview],['voucher','Voucher terbit',vVoucher],['audit','Riwayat audit',vAudit]]},
+  lead:{h:'Beban kerja tim review',p:'Pantau antrean dan alihkan tugas ke reviewer lain.',scope:'Layar ini tidak menampilkan isi dokumen atau nilai transaksi. Anda tidak bisa mengotorisasi pembayaran klien.',
+    screens:[['queue','Beban kerja',vQueueLead],['audit','Riwayat beban kerja',vAudit]]},
+  admin:{h:'Akun pegawai, peran, dan klien',p:'Setujui pendaftaran pegawai, buat akun, atur peran, dan kelola daftar klien.',scope:'Layar ini tidak memuat dokumen atau transaksi. Anda tidak bisa menyetujui transaksi.',
+    screens:[['queue','Pendaftaran dan akses',vQueueAdmin],['users','Akun pegawai',vUsers],['clients','Klien',vClients],['audit','Riwayat audit',vAudit]]}
+};
+const TESTS=[
+  ['Baca dokumen D-1041 (PT Maju Jaya)',u=>({pic:'doc:read:own',support:'doc:read:delegated',finance:'doc:read:assigned'}[u.role]||'doc:read:own'),'D-1041'],
+  ['Baca dokumen D-1043 (PT Karya Nusa)',u=>({pic:'doc:read:own',support:'doc:read:delegated',finance:'doc:read:assigned'}[u.role]||'doc:read:own'),'D-1043'],
+  ['Atur pajak dokumen D-1041',u=>u.role==='support'?'doc:tax:delegated':'doc:tax:own','D-1041'],
+  ['Setujui hasil ekstraksi D-1041',()=>'doc:decide:assigned','D-1041'],
+  ['Unduh voucher D-1039',()=>'voucher:download:own','D-1039'],
+  ['Alihkan tugas D-1041',()=>'task:reassign',null],
+  ['Ubah peran pengguna',()=>'user:manage',null],
+  ['Tambah klien baru',()=>'client:manage',null],
+  ['Baca seluruh riwayat audit sistem',()=>'audit:read:all',null]
+];
+function vProbe(){
+  return '<details class="card probe" '+(S.probeOpen?'open':'')+'><summary>Uji kebijakan akses (khusus prototipe)</summary><p class="sub">Setiap tombol mencoba satu aksi sebagai '+esc(label(me()))+'. Hasilnya keputusan kebijakan dan tidak mengubah data. Penolakan tercatat di riwayat audit System Admin.</p>'+
+    '<div class="tests">'+TESTS.map((t,i)=>'<button class="btn sm" data-act="probe" data-i="'+i+'">'+esc(t[0])+'</button>').join('')+'</div>'+
+    '<div class="res">'+S.probe.map(r=>'<div class="'+(r.ok?'y':'n')+'"><b>'+(r.ok?'Diizinkan':'403 Ditolak')+'</b><span>'+esc(r.t)+(r.ok?'':'. '+esc(r.why))+'</span></div>').join('')+'</div></details>';
+}
+
+/* ---- login dan shell ---- */
+const BRANDSVG='<svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><g fill="#f08fb0"><circle cx="14" cy="14" r="9"/><circle cx="26" cy="14" r="9"/><circle cx="14" cy="26" r="9"/><circle cx="26" cy="26" r="9"/></g><circle cx="20" cy="20" r="5.5" fill="#308087"/></svg>';
+function vLogin(){
+  const pts=[['lock','Setiap peran hanya melihat data yang menjadi tanggung jawabnya.'],['audit','Semua tindakan tercatat lengkap dengan pelaku dan waktunya.'],['voucher','Voucher hanya terbit setelah disetujui Finance Reviewer. Dokumen bermasalah dikembalikan ke Intake Support untuk diperbaiki.']];
+  const reg=S.authMode==='register';
+  const tabs='<div class="authtabs" role="tablist"><button type="button" role="tab" aria-selected="'+(!reg)+'" data-act="authmode" data-v="login">Masuk</button><button type="button" role="tab" aria-selected="'+reg+'" data-act="authmode" data-v="register">Daftar pegawai</button></div>';
+  const roleOpts=SELF_ROLES.map(r=>'<option value="'+r+'"'+(S.reg.role===r?' selected':'')+'>'+ROLE[r].label+'</option>').join('');
+  const card=reg?
+    '<h2>Daftar sebagai pegawai</h2><p class="sub">Akun baru aktif setelah disetujui System Admin. Admin juga menetapkan peran akhir Anda.</p><form id="regForm" novalidate>'+(S.regErr?'<div class="auth-err" role="alert">'+ICON.warn+'<span>'+esc(S.regErr)+'</span></div>':'')+
+    '<label>Nama lengkap<input type="text" id="rname" autocomplete="name" value="'+esc(S.reg.name)+'"></label>'+
+    '<label>Email kerja<input type="email" id="remail" autocomplete="email" placeholder="nama@perusahaan.com" value="'+esc(S.reg.email)+'"></label>'+
+    '<label>Peran yang diajukan<select id="rrole">'+roleOpts+'</select></label>'+
+    '<label>Kata sandi<input type="password" id="rpw" autocomplete="new-password" placeholder="Minimal 8 karakter"></label>'+
+    '<label>Ulangi kata sandi<input type="password" id="rpw2" autocomplete="new-password"></label>'+
+    '<button class="btn primary" type="submit">Kirim pendaftaran</button></form><div class="auth-foot">Sudah punya akun? <button type="button" class="pwtoggle" style="position:static;transform:none" data-act="authmode" data-v="login">Masuk</button></div>'
+  :
+    '<h2>Masuk</h2><p class="sub">Gunakan akun AMIGA Anda untuk membuka ruang kerja.</p><form id="loginForm" novalidate>'+(S.authNote?'<div class="auth-ok" role="status">'+ICON.ok+'<span>'+esc(S.authNote)+'</span></div>':'')+(S.loginErr?'<div class="auth-err" role="alert">'+ICON.warn+'<span>'+esc(S.loginErr)+'</span></div>':'')+
+    '<label>Email<input type="email" id="lemail" autocomplete="username" placeholder="nama@perusahaan.com" value="'+esc(S.loginEmail)+'"></label>'+
+    '<label>Kata sandi<span class="pwwrap"><input type="password" id="lpw" autocomplete="current-password" placeholder="Masukkan kata sandi"><button type="button" class="pwtoggle" data-act="togglepw" aria-pressed="false">Tampilkan</button></span></label>'+
+    '<button class="btn primary" type="submit">Masuk</button></form><div class="auth-foot"><button type="button" class="pwtoggle" style="position:static;transform:none" data-act="forgot">Lupa kata sandi?</button><p id="forgotNote" style="margin:6px 0 0;display:none">Hubungi System Admin untuk mengatur ulang akses akun Anda.</p><p style="margin:10px 0 0">Pegawai baru? <button type="button" class="pwtoggle" style="position:static;transform:none" data-act="authmode" data-v="register">Daftar di sini</button></p></div>'+
+    '<details class="demo"><summary>Akun contoh untuk mencoba</summary><div class="chips">'+USERS.filter(u=>u.status==='Aktif').map(function(u){return '<button type="button" class="chip" data-act="fill" data-id="'+u.id+'">'+esc(u.name.split(' ')[0])+' ('+ROLE[u.role].label+')</button>';}).join('')+'</div><p class="m">Kata sandi contoh: <b>'+DEMO_PW+'</b>. Hanya untuk prototipe.</p></details>';
+  return '<div class="auth"><section class="auth-brand"><div class="brand">'+BRANDSVG+'<span class="word">amiga</span><small>Intake dokumen</small></div><div><h1>Satu pintu, ruang kerja sesuai peran Anda</h1><p class="lead">Unggah invoice, periksa hasil ekstraksi, dan terbitkan voucher dalam satu alur yang rapi dan tercatat.</p></div><ul class="auth-points">'+pts.map(function(p){return '<li>'+ICON[p[0]].replace('<svg','<svg width="18" height="18"')+'<span>'+p[1]+'</span></li>';}).join('')+'</ul></section>'+
+    '<section class="auth-panel"><div class="auth-card">'+tabs+card+'</div></section></div>';
+}
+function renderBar(){
+  const u=S.session;
+  document.querySelector('.top').style.display=u?'':'none';
+  document.getElementById('bar').innerHTML='<div class="brand"><svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><g fill="#f08fb0"><circle cx="14" cy="14" r="9"/><circle cx="26" cy="14" r="9"/><circle cx="14" cy="26" r="9"/><circle cx="26" cy="26" r="9"/></g><circle cx="20" cy="20" r="5.5" fill="#308087"/></svg><span class="word">amiga</span><small>Intake dokumen</small></div>'+
+    (u?'<div class="me"><div class="av" aria-hidden="true">'+esc(u.name[0])+'</div><div><b>'+esc(u.name)+'</b><span class="r">'+ROLE[u.role].label+'</span></div></div><button class="btn sm" data-act="logout">Keluar</button>':'');
+}
+function render(){
+  renderBar();
+  const root=document.getElementById('app');
+  if(!S.session){root.innerHTML=vLogin();return;}
+  const u=S.session,M=UI[u.role];
+  const allScr=M.screens.concat(M.hidden||[]);
+  if(!allScr.some(s=>s[0]===S.screen))S.screen=M.screens[0][0];
+  const scr=allScr.find(s=>s[0]===S.screen);
+  let body;
+  try{body=scr[2]();}catch(e){body='<section class="card"><div class="empty"><b>'+(e.deny?'403 Akses ditolak':'Terjadi kendala')+'</b>'+esc(e.message)+'</div></section>';}
+  const tabs=M.screens.map(s=>'<button data-act="go" data-v="'+s[0]+'" '+((S.screen===s[0]||(s[0]==='upload'&&S.screen==='tax'))?'aria-current="page"':'')+'>'+ICON[s[0]]+s[1]+'</button>').join('');
+  root.innerHTML='<div class="hero"><div class="hero-in"><h1>'+M.h+'</h1><p>'+M.p+'</p><div class="scope">'+ICON.lock+'<span>'+M.scope+'</span></div></div></div>'+
+    '<main><nav class="tabs" aria-label="Menu '+ROLE[u.role].label+'">'+tabs+'</nav><div class="screen">'+body+vProbe()+'</div></main>';
+}
+function go(s){S.screen=s;S.reason='';render();window.scrollTo({top:0,behavior:'smooth'});}
+function resetView(){S.screen=null;S.sel=null;S.reason='';S.fKlien='all';S.fStatus='all';S.auditDoc='all';S.probe=[];S.probeOpen=false;S.up=newUp();}
+
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(!a||a.disabled)return;
+  const k=a.dataset.act,v=a.dataset.v,id=a.dataset.id;
+  if(k==='fill'){const fu=userById(id);document.getElementById('lemail').value=fu.email;document.getElementById('lpw').value=DEMO_PW;S.loginErr='';}
+  else if(k==='togglepw'){const pi=document.getElementById('lpw');const on=pi.type==='password';pi.type=on?'text':'password';a.textContent=on?'Sembunyikan':'Tampilkan';a.setAttribute('aria-pressed',String(on));}
+  else if(k==='forgot'){const fn=document.getElementById('forgotNote');fn.style.display=fn.style.display==='none'?'block':'none';}
+  else if(k==='login'){resetView();S.session=Object.assign({},userById(id),{pw:undefined});render();window.scrollTo(0,0);}
+  else if(k==='logout'){S.session=null;S.authMode='login';resetView();render();}
+  else if(k==='tax-open'){S.sel=id;S.taxf=null;go('tax');}
+  else if(k==='open-voucher'){S.sel=id;go('voucher');}
+  else if(k==='tax-del'){S.taxf.custom.splice(+a.dataset.i,1);render();}
+  else if(k==='tax-add'){const nc=S.taxf.nc,rate=Number(String(nc.rate).replace(',','.'));
+    if(!nc.label.trim())S.taxf.err='Isi nama pajak.';
+    else if(!isFinite(rate)||rate<=0||rate>100)S.taxf.err='Tarif harus lebih dari 0 dan paling besar 100%.';
+    else{S.taxf.err='';S.taxf.custom.push({code:'LAIN'+(Date.now()%100000),label:nc.label.trim().slice(0,40),rate:rate,kind:nc.kind});S.taxf.nc={label:'',rate:'',kind:'withhold'};}
+    render();}
+  else if(k==='tax-save'){try{const ret=docById(S.sel).status==='Dikembalikan';const m=api.setTax(S.sel,taxLines(),S.taxf.approvers);toast(m);S.taxf=null;if(ret){S.screen='fixdoc';}else{S.sel=null;S.screen='queue';}render();}catch(err){toast((err.deny?'403 Ditolak. ':'')+err.message,true);render();}}
+  else if(k==='go')go(v);
+  else if(k==='fs'){S.fStatus=v;render();}
+  else if(k==='trace'){S.auditDoc=id;go('audit');}
+  else if(k==='fix'){S.sel=id;go('fixdoc');}
+  else if(k==='open-review'){S.sel=id;go('review');}
+  else if(k==='approve'){try{const m=api.decide(S.sel,'approve');toast(m);S.sel=null;S.screen='queue';render();}catch(err){toast((err.deny?'403 Ditolak. ':'')+err.message,true);render();}}
+  else if(k==='reject'||k==='return'){const why=S.reason.trim();attempt(()=>{api.decide(S.sel,k,why);S.reason='';S.sel=null;S.screen='queue';},k==='reject'?'Dokumen ditolak.':'Dokumen dikembalikan ke Intake Support untuk diperbaiki.');}
+  else if(k==='download')attempt(()=>api.download(S.sel),'Voucher diunduh (simulasi).');
+  else if(k==='add-user')attempt(()=>{api.createUser(S.nu);S.nu={name:'',email:'',role:'support',pw:''};},'Akun pegawai dibuat. Sampaikan kata sandi awal ke pegawai.');
+  else if(k==='authmode'){S.authMode=v;S.loginErr='';S.regErr='';S.authNote='';render();}
+  else if(k==='resubmit')attempt(()=>{api.resubmit(S.sel,S.reason.trim());S.reason='';S.sel=null;S.screen='queue';},'Dokumen dikirim ulang ke Finance Reviewer.');
+  else if(k==='add-client')attempt(()=>{api.addClient(S.nc);S.nc={name:''};},'Klien ditambahkan.');
+  else if(k==='acc-ok')attempt(()=>api.accessDecide(id,true,S.apvRole[id]),'Permintaan disetujui.');
+  else if(k==='acc-no')attempt(()=>api.accessDecide(id,false),'Permintaan ditolak.');
+  else if(k==='reset-up'){S.up=newUp();render();}
+  else if(k==='submit-up'){
+    const f=S.up,er={};
+    if(!f.file)er.file='Pilih file PDF invoice terlebih dulu.';
+    if(!f.klien)er.klien='Pilih klien.';if(!f.jenis)er.jenis='Pilih jenis permintaan.';if(me().role==='support'&&!f.pic)er.pic='Pilih PIC Klien yang menerima order ini.';
+    f.errs=er;
+    if(Object.keys(er).length){render();toast('Lengkapi data yang ditandai merah.',true);return;}
+    attempt(()=>{const nd=api.createDoc(f);S.up=newUp();S.sel=nd.id;S.taxf=null;S.screen='tax';},'Dokumen terbaca. Lanjut atur pajak untuk voucher.');
+  }
+  else if(k==='probe'){
+    const t=TESTS[+a.dataset.i];const u=me();const perm=t[1](u);const r=api.probe(perm,t[2]);
+    S.probe.unshift({ok:r.ok,t:t[0],why:r.why});S.probe=S.probe.slice(0,6);S.probeOpen=true;render();
+  }
+});
+document.addEventListener('change',e=>{
+  const el=e.target,b=el.dataset.bind;if(!b)return;
+  if(b==='fKlien'){S.fKlien=el.value;render();}
+  else if(b==='tax.on'){S.taxf.sel[el.dataset.code].on=el.checked;render();}
+  else if(b==='tax.rate'){S.taxf.sel[el.dataset.code].rate=el.value;render();}
+  else if(b==='tax.apv'){S.taxf.approvers=+el.value;render();}
+  else if(b==='tax.nl'){S.taxf.nc.label=el.value;}
+  else if(b==='tax.nr'){S.taxf.nc.rate=el.value;}
+  else if(b==='tax.nk'){S.taxf.nc.kind=el.value;}
+  else if(b==='sel'){S.sel=el.value;render();}
+  else if(b==='auditDoc'){S.auditDoc=el.value;render();}
+  else if(b==='assign')attempt(()=>api.reassign(el.dataset.id,el.value),'Tugas dialihkan.');
+  else if(b==='apvrole'){S.apvRole[el.dataset.id]=el.value;}
+  else if(b==='setrole')attempt(()=>api.setRole(el.dataset.id,el.value),'Peran diperbarui.');
+  else if(b==='file')setFile(el.files&&el.files[0]);
+  else if(b.startsWith('up.')){S.up[b.slice(3)]=el.value;delete S.up.errs[b.slice(3)];render();}
+  else if(b==='field'){
+    const k=el.dataset.k,x=FIELDS.find(q=>q[0]===k);let nv=el.value.trim();
+    if(x[2]==='num'){const dg=nv.replace(/\D/g,'');nv=dg===''?'':Number(dg);}
+    attempt(()=>api.correct(S.sel,k,nv),'Koreksi '+x[1]+' tersimpan.');
+  }
+});
+document.addEventListener('input',e=>{const b=e.target.dataset.bind;if(b==='reason')S.reason=e.target.value;else if(b&&b.startsWith('nc.'))S.nc[b.slice(3)]=e.target.value;else if(b&&b.startsWith('nu.'))S.nu[b.slice(3)]=e.target.value;});
+document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('probe'))S.probeOpen=e.target.open;},true);
+document.addEventListener('focusin',e=>{
+  document.querySelectorAll('.paper .row2.hl').forEach(n=>n.classList.remove('hl'));
+  const t=e.target;if(t.dataset&&t.dataset.bind==='field'){const n=document.querySelector('.paper [data-src="'+t.dataset.k+'"]');if(n)n.classList.add('hl');}
+});
+function setFile(f){
+  if(!f)return;
+  if(!/pdf$/i.test(f.name)){S.up.errs.file='File harus berformat PDF.';render();return;}
+  S.up.file=f.name;delete S.up.errs.file;render();toast('File '+f.name+' siap dikirim.');
+}
+document.addEventListener('dragover',e=>{const d=e.target.closest('.drop');if(d){e.preventDefault();d.classList.add('over');}});
+document.addEventListener('dragleave',e=>{const d=e.target.closest('.drop');if(d)d.classList.remove('over');});
+document.addEventListener('drop',e=>{const d=e.target.closest('.drop');if(d){e.preventDefault();setFile(e.dataTransfer.files[0]);}});
+
+document.addEventListener('submit',e=>{
+  if(e.target.id==='regForm'){
+    e.preventDefault();const g=i=>document.getElementById(i).value;
+    S.reg={name:g('rname'),email:g('remail'),role:g('rrole')};
+    try{const em=api.register({name:g('rname'),email:g('remail'),role:g('rrole'),pw:g('rpw'),pw2:g('rpw2')});
+      S.regErr='';S.authMode='login';S.loginEmail=em;S.authNote='Pendaftaran terkirim. Akun aktif setelah disetujui System Admin. Setelah itu masuk dengan email dan kata sandi yang Anda buat.';S.reg={name:'',email:'',role:'support'};render();}
+    catch(err){S.regErr=err.message;render();}
+    return;}
+  if(e.target.id!=='loginForm')return;
+  e.preventDefault();
+  const em=document.getElementById('lemail').value.trim().toLowerCase(),pw=document.getElementById('lpw').value;
+  S.loginEmail=em;
+  const t=LOGIN_TRIES[em]||{n:0,until:0};
+  const fail=m=>{S.loginErr=m;render();const f=document.getElementById('lpw');if(f)f.focus();};
+  if(!em||!pw)return fail('Isi email dan kata sandi.');
+  if(t.until>Date.now())return fail('Terlalu banyak percobaan. Coba lagi dalam '+Math.ceil((t.until-Date.now())/1000)+' detik.');
+  const u=USERS.find(x=>x.email===em);
+  if(!u||pw!==u.pw){t.n++;if(t.n>=5){t.n=0;t.until=Date.now()+60000;}LOGIN_TRIES[em]=t;return fail('Email atau kata sandi salah.');}
+  if(u.status==='Menunggu')return fail('Akun Anda masih menunggu persetujuan System Admin.');
+  if(u.status==='Ditolak')return fail('Pendaftaran akun ini ditolak. Hubungi System Admin.');
+  delete LOGIN_TRIES[em];S.loginErr='';S.loginEmail='';S.authNote='';resetView();S.session=Object.assign({},u,{pw:undefined});render();window.scrollTo(0,0);
+});
+
+render();
+</script>
+</body>
+</html>

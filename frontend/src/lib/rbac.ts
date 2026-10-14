@@ -3,55 +3,56 @@ import { stamp } from './format';
 import { store } from './store';
 import type { RoleKey, User } from './types';
 
-/** Ditolak oleh kebijakan akses (HTTP 403). */
 export class Forbidden extends Error {
-  constructor(m: string) {
-    super(m);
-    this.name = 'Forbidden';
-  }
+  constructor(m: string) { super(m); this.name = 'Forbidden'; }
 }
-/** Pelanggaran aturan bisnis biasa (bukan masalah akses). */
 export class Rule extends Error {
-  constructor(m: string) {
-    super(m);
-    this.name = 'Rule';
-  }
+  constructor(m: string) { super(m); this.name = 'Rule'; }
 }
 
 export const PERMS: Record<RoleKey, string[]> = {
-  support: ['queue:read:delegated', 'doc:create:delegated', 'doc:read:delegated', 'voucher:download:own', 'audit:read:delegated'],
+  pic: [
+    'queue:read:own', 'doc:create', 'doc:read:own',
+    'doc:tax:own', 'doc:fix:own',
+    'voucher:download:own', 'audit:read:own',
+  ],
+  support: [
+    'queue:read:delegated', 'doc:create:delegated', 'doc:read:delegated',
+    'doc:tax:delegated', 'doc:fix:delegated',
+    'voucher:read:delegated', 'audit:read:delegated',
+  ],
   finance: [
     'queue:read:assigned', 'doc:read:assigned', 'doc:correct:assigned', 'doc:decide:assigned',
     'voucher:read:assigned', 'audit:read:assigned',
   ],
-  lead: ['queue:read:workload', 'task:reassign', 'audit:read:workload'],
-  admin: ['queue:read:access', 'access:decide', 'user:manage', 'delegation:manage', 'client:manage', 'audit:read:admin'],
+  lead:  ['queue:read:workload', 'task:reassign', 'audit:read:workload'],
+  admin: ['queue:read:access', 'access:decide', 'user:manage', 'client:manage', 'audit:read:admin'],
 };
 
 export const SCOPE_TEXT: Record<string, string> = {
-  own: 'dokumen klien yang Anda tangani',
-  delegated: 'klien yang didelegasikan kepada Anda',
-  assigned: 'tugas review yang ditugaskan kepada Anda',
+  own:       'dokumen order yang masuk lewat Anda',
+  delegated: 'dokumen yang Anda unggah atau yang dikembalikan ke Intake Support',
+  assigned:  'tugas review yang ditugaskan kepada Anda',
 };
 
-/** Sasaran pemeriksaan cakupan. Doc asli memenuhi bentuk ini. */
 export interface ScopeTarget {
   no: string;
   klien: string;
   owner: string;
   uploader: string;
   reviewer?: string;
+  status?: string;
 }
 
-export function activeDelegations(uid: string) {
-  const today = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
-  return store.deleg.filter((g) => g.support === uid && g.active && g.expires >= today);
+export function activeUsers(role: RoleKey) {
+  return store.users.filter(u => u.role === role && u.status === 'Aktif');
 }
 
 export function inScope(u: User, doc: ScopeTarget, scope: string): boolean {
   if (scope === 'own') return doc.owner === u.id;
   if (scope === 'delegated') {
-    return activeDelegations(u.id).some((g) => g.support === doc.owner && g.klien.includes(doc.klien)) || doc.owner === u.id;
+    // Support sees docs they uploaded + docs returned (Dikembalikan) where they are the uploader
+    return doc.uploader === u.id || doc.status === 'Dikembalikan';
   }
   if (scope === 'assigned') return doc.reviewer === u.id;
   return false;
@@ -75,11 +76,12 @@ export function can(u: User, perm: string, doc?: ScopeTarget | null): { ok: bool
 
 export function logDeny(u: User, perm: string, why: string): void {
   store.events.push({
-    k: 'security', d: '', t: stamp(), a: `${u.name} (${ROLE_LABEL[u.role]})`, w: `Akses ditolak: ${perm}`, x: why,
+    k: 'security', d: '', t: stamp(),
+    a: `${u.name} (${ROLE_LABEL[u.role]})`,
+    w: `Akses ditolak: ${perm}`, x: why,
   });
 }
 
-/** Periksa izin. Jika ditolak: catat ke audit dan lempar Forbidden. */
 export function guard(u: User, perm: string, doc?: ScopeTarget | null): void {
   const r = can(u, perm, doc);
   if (!r.ok) {

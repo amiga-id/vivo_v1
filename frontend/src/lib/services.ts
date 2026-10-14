@@ -1,51 +1,102 @@
-import { extractInvoice } from './bedrock';
-import { FIELDS, KLIEN_OWNER, ROLE_LABEL } from './constants';
+/**
+ * services.ts — Business logic layer.
+ * All functions receive the authenticated User, enforce RBAC via guard(),
+ * then read/write the in-memory store.
+ * In production replace this with API calls to Lambda / FastAPI.
+ */
+import { FIELDS, ROLE_LABEL, TAX_PRESETS, SELF_ROLES } from './constants';
 import { addDays, dstr, rp, stamp, todayISO } from './format';
-import { activeDelegations, can, Forbidden, guard, logDeny, Rule } from './rbac';
+import { activeUsers, can, Forbidden, guard, logDeny, Rule } from './rbac';
 import { store } from './store';
-import { PROBES } from './probe';
 import { tally, validate } from './validate';
 import type {
-  AccessRequest, AuditEvent, Delegation, Doc, DocSummary, FieldKey, RoleKey, User, VoucherData, WorkloadRow,
+  AccessRequest, AuditEvent, ClientSummary, Doc, DocSummary, FieldKey,
+  RoleKey, TaxDoc, TaxLine, TaxResult, User, VoucherData, VoucherRow, WorkloadRow,
 } from './types';
 
-/**
- * Lapisan layanan. SEMUA akses data lewat sini dan selalu menerima pengguna yang sedang masuk.
- * Setiap fungsi memeriksa izin (guard) sebelum menyentuh data, dan mengembalikan bentuk data
- * sesuai peran. Di produksi, fungsi-fungsi ini berjalan di server (route handler/Lambda).
- */
-const label = (u: User) => `${u.name} (${ROLE_LABEL[u.role]})`;
-const userName = (id: string) => store.users.find((x) => x.id === id)?.name ?? id;
+/* ── helpers ── */
+const roleLabel = (u: User) => `${u.name} (${ROLE_LABEL[u.role]})`;
+const userName  = (id: string) => store.users.find(x => x.id === id)?.name ?? id;
+
 const findDoc = (id: string): Doc => {
-  const d = store.docs.find((x) => x.id === id);
+  const d = store.docs.find(x => x.id === id);
   if (!d) throw new Rule('Dokumen tidak ditemukan.');
   return d;
 };
+
 const ev = (k: AuditEvent['k'], d: string, w: string, x: string, a: string, bot = false) =>
   store.events.push({ k, d, t: stamp(), a, w, x, bot });
-const summary = (d: Doc): DocSummary => ({
-  id: d.id, no: d.no, nomorUrut: d.nomorUrut, klien: d.klien, namaPT: d.namaPT, namaPIC: d.namaPIC, 
-  jenis: d.jenis, jenisPajak: d.jenisPajak, saluran: d.saluran, deadline: d.deadline, status: d.status,
-  issue: d.issue, uploader: d.uploader, owner: d.owner, reviewer: d.reviewer,
-});
-const openTasks = (uid: string) =>
-  store.docs.filter((d) => d.reviewer === uid && ['Dalam Review', 'Perlu Tindakan', 'Diproses'].includes(d.status)).length;
 
-/* ---------------- antrean kerja ---------------- */
+const summary = (d: Doc): DocSummary => ({
+  id: d.id, no: d.no, nomorUrut: d.nomorUrut, klien: d.klien,
+  namaPT: d.namaPT, namaPIC: d.namaPIC,
+  jenis: d.jenis, jenisPajak: d.jenisPajak, saluran: d.saluran,
+  deadline: d.deadline, status: d.status, issue: d.issue,
+  uploader: d.uploader, owner: d.owner, reviewer: d.reviewer,
+  taxSet: d.tax !== null, voucherNo: d.voucherNo,
+});
+
+const openTasks = (uid: string) =>
+  store.docs.filter(d => d.reviewer === uid &&
+    ['Dalam Review', 'Diproses'].includes(d.status)).length;
+
+const safeDate = (x: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(x) ? dstr(x) : (x || '—');
+
+/* ── Tax helpers ── */
+export function computeTaxes(dpp: number, taxes: TaxLine[]): TaxResult {
+  const lines = taxes.map(t => ({ ...t, amount: Math.round(dpp * t.rate / 100) }));
+  const add      = lines.filter(l => l.kind === 'add').reduce((s, l) => s + l.amount, 0);
+  const withhold = lines.filter(l => l.kind === 'withhold').reduce((s, l) => s + l.amount, 0);
+  return { dpp, lines, add, withhold, net: dpp + add - withhold };
+}
+
+export function normalizeTaxes(raw: Partial<TaxLine>[]): TaxLine[] {
+  if (!Array.isArray(raw)) throw new Rule('Data pajak tidak valid.');
+  if (raw.length > 8)     throw new Rule('Maksimal 8 jenis pajak per voucher.');
+  const seen: Record<string, boolean> = {};
+  return raw.map((o, i) => {
+    const label = String(o.label ?? '').trim().slice(0, 40);
+    const rate  = Number(o.rate);
+    const code  = String(o.code ?? '').slice(0, 20) || `LAIN${i + 1}`;
+    if (!label) throw new Rule('Nama pajak wajib diisi.');
+    if (o.kind !== 'add' && o.kind !== 'withhold')
+      throw new Rule(`Jenis pajak "${label}" tidak valid.`);
+    if (!isFinite(rate) || rate <= 0 || rate > 100)
+      throw new Rule(`Tarif "${label}" harus lebih dari 0 dan paling besar 100%.`);
+    if (seen[code]) throw new Rule(`Pajak "${label}" dipilih dua kali.`);
+    seen[code] = true;
+    return { code, label, rate: Math.round(rate * 100) / 100, kind: o.kind };
+  });
+}
+
+/* ── Voucher number sequence ── */
+function issueVoucherNo(klien: string): string {
+  const code = store.klienCode[klien];
+  if (!code) throw new Rule('Kode klien belum diatur.');
+  const n = (store.klienCounters[klien] ?? 0) + 1;
+  store.klienCounters[klien] = n;
+  return `VCH-${code}-${String(n).padStart(4, '0')}`;
+}
+
+/* ── Queue ── */
 export function queueFor(u: User): DocSummary[] {
-  const perm = ({ support: 'queue:read:delegated', finance: 'queue:read:assigned' } as Partial<Record<RoleKey, string>>)[u.role];
+  const perm = ({ pic: 'queue:read:own', support: 'queue:read:delegated', finance: 'queue:read:assigned' } as Partial<Record<RoleKey, string>>)[u.role];
   if (!perm) throw new Forbidden('Peran Anda tidak memiliki antrean dokumen.');
   guard(u, perm);
   return store.docs
-    .filter((d) => can(u, perm, d).ok && (u.role !== 'finance' || ['Dalam Review', 'Perlu Tindakan'].includes(d.status)))
+    .filter(d => can(u, perm, d).ok &&
+      (u.role !== 'finance' || d.status === 'Dalam Review'))
     .map(summary);
 }
 
 export function workloadFor(u: User): WorkloadRow[] {
   guard(u, 'queue:read:workload');
-  return store.docs.map((d) => ({
-    id: d.id, no: d.no, klien: d.klien, jenis: d.jenis, deadline: d.deadline, status: d.status,
-    reviewer: d.reviewer, uploader: d.uploader, conflict: d.reviewer === d.uploader,
+  return store.docs.map(d => ({
+    id: d.id, no: d.no, klien: d.klien, jenis: d.jenis,
+    deadline: d.deadline, status: d.status,
+    reviewer: d.reviewer, uploader: d.uploader,
+    conflict: d.reviewer === d.uploader,
   }));
 }
 
@@ -54,16 +105,7 @@ export function requestsFor(u: User): AccessRequest[] {
   return store.requests.slice();
 }
 
-export function delegationsFor(u: User): Delegation[] {
-  if (u.role === 'support') return store.deleg.filter((g) => g.support === u.id);
-  guard(u, 'delegation:manage');
-  return store.deleg.slice();
-}
-
-export const financeUsers = (): { id: string; name: string }[] =>
-  store.users.filter((x) => x.role === 'finance').map((x) => ({ id: x.id, name: x.name }));
-
-/* ---------------- review (Finance Reviewer) ---------------- */
+/* ── Finance review ── */
 export function getDocForReview(u: User, id: string): Doc {
   const d = findDoc(id);
   guard(u, 'doc:read:assigned', d);
@@ -73,70 +115,172 @@ export function getDocForReview(u: User, id: string): Doc {
 export function correctField(u: User, id: string, k: FieldKey, raw: string): string {
   const d = findDoc(id);
   guard(u, 'doc:correct:assigned', d);
-  const def = FIELDS.find((x) => x.k === k);
+  const def = FIELDS.find(x => x.k === k);
   if (!def) throw new Rule('Field tidak dikenal.');
   const old = d.f[k];
   let nv: string | number = raw.trim();
-  if (def.type === 'num') {
-    const dg = raw.replace(/\D/g, '');
-    nv = dg === '' ? 0 : Number(dg);
-  }
+  if (def.type === 'num') { const dg = raw.replace(/\D/g, ''); nv = dg ? Number(dg) : 0; }
   if (String(old) === String(nv)) return 'Tidak ada perubahan.';
-  (d.f as unknown as Record<FieldKey, string | number>)[k] = nv;
+  (d.f as Record<FieldKey, string | number>)[k] = nv;
   d.conf[k] = 1;
-  const show = (v: string | number) => (def.type === 'num' ? rp(v) : String(v));
-  ev('doc', id, `Data dikoreksi: ${def.label}`, `Dari ${show(old)} menjadi ${show(nv)}.`, label(u));
+  const show = (v: string | number) => def.type === 'num' ? rp(v) : String(v);
+  ev('doc', id, `Data dikoreksi: ${def.label}`, `Dari ${show(old)} menjadi ${show(nv)}.`, roleLabel(u));
   return `Koreksi ${def.label} tersimpan.`;
 }
 
-export function decide(u: User, id: string, kind: 'approve' | 'reject' | 'reqinfo', why: string): string {
+export function decide(u: User, id: string, kind: 'approve' | 'reject' | 'return', why: string): string {
   const d = findDoc(id);
   guard(u, 'doc:decide:assigned', d);
+  if (d.status !== 'Dalam Review') throw new Rule('Hanya dokumen berstatus Dalam Review yang bisa diputuskan.');
+
   if (kind === 'approve') {
     if (tally(validate(d.f, d.conf)).err) throw new Rule('Masih ada field bermasalah. Selesaikan dulu sebelum menyetujui.');
-    d.status = 'Disetujui';
-    d.issue = '';
-    ev('doc', id, 'Hasil ekstraksi disetujui', 'Voucher siap diunduh oleh Intake Support.', label(u));
-    ev('workload', id, 'Tugas selesai', `Disetujui oleh ${u.name}.`, label(u));
-    return 'Disetujui. Voucher siap diunduh Intake Support.';
+    if (!d.tax) throw new Rule('Pajak voucher belum diatur. Minta PIC Klien atau Intake Support menyelesaikannya dulu.');
+    d.voucherNo = issueVoucherNo(d.klien);
+    d.status = 'Disetujui'; d.issue = '';
+    ev('doc',      id, 'Hasil ekstraksi disetujui', `Voucher ${d.voucherNo} diterbitkan.`,  roleLabel(u));
+    ev('workload', id, 'Tugas selesai',              `Disetujui oleh ${u.name}.`,            roleLabel(u));
+    return `Disetujui. Voucher ${d.voucherNo} diterbitkan.`;
   }
-  if (!why.trim()) throw new Rule('Tulis alasan agar klien tahu apa yang perlu dilakukan.');
+
+  if (!why.trim()) throw new Rule('Tulis alasan agar penerima tahu apa yang perlu dilakukan.');
+
   if (kind === 'reject') {
-    d.status = 'Perlu Tindakan';
-    d.issue = why.trim();
-    ev('doc', id, 'Dokumen ditolak, dikembalikan ke Intake Support', `Alasan: ${why.trim()}`, label(u));
-    ev('workload', id, 'Tugas dikembalikan', `Ditolak oleh ${u.name}, dikembalikan ke Intake Support untuk perbaikan.`, label(u));
-    return 'Dokumen dikembalikan ke Intake Support untuk perbaikan.';
+    d.status = 'Ditolak'; d.issue = why.trim();
+    ev('doc',      id, 'Dokumen ditolak',           `Alasan: ${why.trim()}`, roleLabel(u));
+    ev('workload', id, 'Tugas selesai',              `Ditolak oleh ${u.name}.`, roleLabel(u));
+    return 'Dokumen ditolak.';
   }
-  d.status = 'Perlu Tindakan';
-  d.issue = why.trim();
-  ev('doc', id, 'Meminta informasi tambahan dari klien', `Permintaan: ${why.trim()}`, label(u));
-  return 'Permintaan informasi dikirim ke klien.';
+
+  // return → Dikembalikan
+  d.status = 'Dikembalikan'; d.issue = why.trim(); d.note = '';
+  ev('doc',      id, 'Dokumen dikembalikan ke Intake Support', `Alasan: ${why.trim()}`,         roleLabel(u));
+  ev('workload', id, 'Tugas dikembalikan ke Intake Support',   `Oleh ${u.name}. Menunggu perbaikan.`, roleLabel(u));
+  return 'Dokumen dikembalikan ke Intake Support untuk diperbaiki.';
 }
 
-export function fileFor(u: User, id: string): { name: string; bytes: Buffer } {
+/* ── Tax setup (PIC / Support) ── */
+export function getTaxDoc(u: User, id: string): TaxDoc {
   const d = findDoc(id);
-  guard(u, u.role === 'finance' ? 'doc:read:assigned' : u.role === 'support' ? 'doc:read:delegated' : 'doc:read:own', d);
-  const f = store.files.get(id);
-  if (!f) throw new Rule('File asli tidak tersedia untuk dokumen ini.');
-  return f;
+  const perm = u.role === 'support' ? 'doc:tax:delegated' : 'doc:tax:own';
+  guard(u, perm, d);
+  return {
+    id: d.id, no: d.no, klien: d.klien, vendor: d.f.vendor,
+    status: d.status, dpp: d.f.dpp, ppnInvoice: d.f.ppn,
+    tax: d.tax ? structuredClone(d.tax) : null,
+    approvers: d.approvers,
+  };
 }
 
-/* ---------------- voucher ---------------- */
+export function setTax(u: User, id: string, raw: Partial<TaxLine>[], approvers: 1 | 2): string {
+  const d = findDoc(id);
+  const perm = u.role === 'support' ? 'doc:tax:delegated' : 'doc:tax:own';
+  guard(u, perm, d);
+  if (d.status === 'Disetujui' || d.status === 'Ditolak')
+    throw new Rule('Dokumen sudah selesai diproses. Pajak tidak bisa diubah lagi.');
+  if (approvers !== 1 && approvers !== 2)
+    throw new Rule('Jumlah penyetuju harus 1 atau 2 pihak.');
+  const taxes = normalizeTaxes(raw);
+  d.tax = taxes; d.approvers = approvers;
+  const bd = computeTaxes(d.f.dpp, taxes);
+  const taxDesc = taxes.map(t => `${t.label} ${t.rate}%`).join(', ') || 'Tanpa pajak';
+  ev('doc', id, 'Pajak voucher diatur',
+    `${taxDesc}. Nominal voucher ${rp(bd.net)}. Penyetuju: ${approvers} pihak.`,
+    roleLabel(u));
+  return `Pajak tersimpan. Nominal voucher ${rp(bd.net)}.`;
+}
+
+/* ── Fix / resubmit returned doc (PIC / Support) ── */
+export function getFixDoc(u: User, id: string): Doc {
+  const d = findDoc(id);
+  const perm = u.role === 'support' ? 'doc:fix:delegated' : 'doc:fix:own';
+  guard(u, perm, d);
+  return structuredClone(d);
+}
+
+export function correctFixField(u: User, id: string, k: FieldKey, raw: string): string {
+  const d = findDoc(id);
+  const perm = u.role === 'support' ? 'doc:fix:delegated' : 'doc:fix:own';
+  guard(u, perm, d);
+  if (d.status !== 'Dikembalikan') throw new Rule('Dokumen hanya bisa diperbaiki saat berstatus Dikembalikan.');
+  return correctField(u, id, k, raw);   // reuse Finance correction logic
+}
+
+export function resubmit(u: User, id: string, note: string): string {
+  const d = findDoc(id);
+  const perm = u.role === 'support' ? 'doc:fix:delegated' : 'doc:fix:own';
+  guard(u, perm, d);
+  if (d.status !== 'Dikembalikan') throw new Rule('Hanya dokumen berstatus Dikembalikan yang bisa dikirim ulang.');
+  if (tally(validate(d.f, d.conf)).err) throw new Rule('Masih ada field bermasalah. Perbaiki dulu sebelum mengirim ulang.');
+  if (!d.tax) throw new Rule('Pajak voucher belum diatur. Atur pajak dulu sebelum mengirim ulang.');
+  d.status = 'Dalam Review'; d.issue = ''; d.note = String(note ?? '').slice(0, 300);
+  ev('doc',      id, 'Dokumen diperbaiki dan dikirim ulang',
+    `Dikirim ulang ke ${userName(d.reviewer)}${d.note ? `. Catatan: ${d.note}` : '.'}`,
+    roleLabel(u));
+  ev('workload', id, 'Tugas kembali ke Finance Reviewer',
+    `Menunggu review ulang oleh ${userName(d.reviewer)}.`,
+    'Sistem', true);
+  return `Dokumen dikirim ulang ke ${userName(d.reviewer)} untuk review ulang.`;
+}
+
+/* ── Voucher ── */
 export function vouchersFor(u: User): DocSummary[] {
-  const perm = u.role === 'support' ? 'voucher:download:own' : 'voucher:read:assigned';
+  const perm = u.role === 'pic' ? 'voucher:download:own'
+    : u.role === 'support' ? 'voucher:read:delegated'
+    : 'voucher:read:assigned';
   guard(u, perm);
   return store.docs
-    .filter((d) => can(u, perm, d).ok && (u.role === 'support' ? d.status === 'Disetujui' : ['Disetujui', 'Dalam Review'].includes(d.status)))
+    .filter(d => can(u, perm, d).ok && d.status === 'Disetujui')
     .map(summary);
 }
 
 export function getVoucher(u: User, id: string): VoucherData {
   const d = findDoc(id);
-  guard(u, u.role === 'support' ? 'voucher:download:own' : 'voucher:read:assigned', d);
+  const perm = u.role === 'pic' ? 'voucher:download:own'
+    : u.role === 'support' ? 'voucher:read:delegated'
+    : 'voucher:read:assigned';
+  guard(u, perm, d);
+  if (d.status !== 'Disetujui') throw new Rule('Voucher baru terbit setelah disetujui Finance Reviewer.');
+
+  // Build line-item rows
+  const rows: VoucherRow[] = d.items.map((it, i) => ({
+    no: i + 1, tgl: it.tgl ? safeDate(it.tgl) : '',
+    ket: it.ket, jumlah: it.jumlah, harga: it.harga,
+  }));
+  if (!rows.length && d.f.dpp > 0)
+    rows.push({ no: 1, tgl: safeDate(d.f.tgl), ket: 'Sesuai invoice', jumlah: '', harga: d.f.dpp });
+
+  const diff = d.f.dpp - rows.reduce((s, r) => s + r.harga, 0);
+  if (diff !== 0) rows.push({ no: rows.length + 1, tgl: '', ket: 'Penyesuaian terhadap DPP', jumlah: '', harga: diff });
+
+  const bd = computeTaxes(d.f.dpp, d.tax ?? []);
+  rows.push({ no: '', tgl: '', ket: 'Subtotal (DPP)', jumlah: '', harga: d.f.dpp, sub: true });
+  bd.lines.forEach(l => rows.push({
+    no: '', tgl: '',
+    ket: `${l.label} (${l.kind === 'add' ? 'ditambahkan' : 'dipotong'})`,
+    jumlah: `${l.rate}%`,
+    harga: l.kind === 'add' ? l.amount : -l.amount,
+    tax: true,
+  }));
+
+  const taxText = bd.lines.length
+    ? bd.lines.map(l => `${l.label} ${l.rate}%: ${l.kind === 'add' ? '+ ' : '- '}${rp(l.amount)}`).join('; ')
+    : 'Tanpa pajak';
+
+  const dates = d.items.map(it => it.tgl).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).sort();
+  const from  = dates[0] ?? d.f.tgl;
+  const to    = dates[dates.length - 1] ?? from;
+  const periode = from === to ? safeDate(from) : `${safeDate(from)} – ${safeDate(to)}`;
+
   return {
-    id: d.id, no: d.no, nomorUrut: d.nomorUrut, klien: d.klien, namaPT: d.namaPT, namaPIC: d.namaPIC,
-    status: d.status, reviewer: userName(d.reviewer),
+    id: d.id, no: d.no, number: d.voucherNo, nomorUrut: d.nomorUrut,
+    klien: d.klien, namaPT: d.namaPT, namaPIC: d.namaPIC,
+    status: d.status,
+    reviewer: userName(d.reviewer), submitter: userName(d.owner),
+    nama: d.f.vendor, perusahaan: d.klien, periode,
+    nominal: bd.net, dpp: d.f.dpp, add: bd.add, withhold: bd.withhold,
+    taxText, rows, total: bd.net,
+    approvers: d.approvers,
     f: { vendor: d.f.vendor, no: d.f.no, rek: d.f.rek, dpp: d.f.dpp, ppn: d.f.ppn, total: d.f.total },
   };
 }
@@ -145,154 +289,254 @@ export function recordDownload(u: User, id: string): string {
   const d = findDoc(id);
   guard(u, 'voucher:download:own', d);
   if (d.status !== 'Disetujui') throw new Rule('Voucher belum disetujui Finance.');
-  ev('doc', id, 'Voucher diunduh', `VCH-2026-${id.slice(2)} diunduh sebagai PDF.`, label(u));
+  ev('doc', id, 'Voucher diunduh', `${d.voucherNo} diunduh sebagai PDF.`, roleLabel(u));
   return 'Voucher siap dicetak atau disimpan sebagai PDF.';
 }
 
-/* ---------------- unggah ---------------- */
+/* ── Upload ── */
 export function klienOptions(u: User): string[] {
-  guard(u, 'doc:create:delegated');
-  const s = new Set<string>();
-  activeDelegations(u.id).forEach((g) => g.klien.forEach((k) => s.add(k)));
-  // Intake support juga bisa upload untuk klien yang mereka miliki langsung dari KLIEN_OWNER
-  store.clients.filter((c) => KLIEN_OWNER[c.namaPT] === u.id).forEach((c) => s.add(c.namaPT));
-  return [...s];
+  guard(u, u.role === 'pic' ? 'doc:create' : 'doc:create:delegated');
+  return store.clients.map(c => c.namaPT);
+}
+
+export function picOptions(): { id: string; name: string }[] {
+  return activeUsers('pic').map(p => ({ id: p.id, name: p.name }));
 }
 
 export interface UploadInput {
-  klien: string; jenis: string; jenisPajak: string; saluran: string; tgl: string; cat: string;
-  file: { name: string; bytes: Buffer };
+  klien: string; jenis: string; saluran: string; tgl: string; cat: string;
+  picId?: string;  // required when uploader is support
+  fileName: string;
 }
 
-export async function createDocFromUpload(u: User, p: UploadInput): Promise<{ doc: Doc; mode: string }> {
-  // Cari owner dari KLIEN_OWNER untuk backward compatibility
-  const owner = KLIEN_OWNER[p.klien] || 'dewi'; // default owner jika tidak ditemukan
-  
-  // Cari data client
-  const client = store.clients.find((c) => c.namaPT === p.klien);
-  if (!client) throw new Rule('Data klien tidak ditemukan.');
-  
-  guard(u, 'doc:create:delegated', { no: p.klien, klien: p.klien, owner, uploader: u.id });
-  
-  if (!/\.pdf$/i.test(p.file.name) || p.file.bytes.subarray(0, 4).toString() !== '%PDF') throw new Rule('File harus berformat PDF.');
-  if (p.file.bytes.length > 10 * 1024 * 1024) throw new Rule('Ukuran file maksimal 10 MB.');
+export function createDoc(u: User, p: UploadInput): Doc {
+  const client = store.clients.find(c => c.namaPT === p.klien);
+  if (!client) throw new Rule('Klien tidak dikenal.');
 
-  const cand = store.users.filter((x) => x.role === 'finance' && x.id !== u.id).sort((a, b) => openTasks(a.id) - openTasks(b.id));
-  if (!cand.length) throw new Rule('Belum ada Finance Reviewer yang tersedia.');
-  const id = `D-${store.seq++}`;
-  
-  // Generate nomor urut untuk klien ini
-  const nomorUrut = client.nextSequence;
-  client.nextSequence += 1;
-
-  let doc: Doc;
-  let mode = 'simulasi';
-  const botName = 'Robot Admin';
-  try {
-    const ex = await extractInvoice(p.file.bytes, p.klien);
-    mode = ex.mode;
-    const bad = tally(validate(ex.f, ex.conf)).err > 0;
-    doc = {
-      id, no: ex.f.no || id, nomorUrut, klien: p.klien, namaPT: client.namaPT, namaPIC: client.namaPIC, 
-      jenis: p.jenis, jenisPajak: p.jenisPajak, saluran: p.saluran, tgl: p.tgl,
-      deadline: addDays(todayISO(), 7), status: bad ? 'Perlu Tindakan' : 'Dalam Review', owner, uploader: u.id,
-      reviewer: cand[0].id, issue: bad ? 'Ada field yang gagal aturan bisnis. Periksa dan unggah ulang bila perlu.' : '',
-      f: ex.f, conf: ex.conf, src: { ...ex.f }, hasFile: true,
-    };
-    store.docs.push(doc);
-    store.files.set(id, p.file);
-    ev('doc', id, 'Dokumen diunggah untuk klien',
-      `File ${p.file.name}. Klien: ${client.namaPT} (PIC: ${client.namaPIC}). Nomor urut: ${nomorUrut}. Metadata: ${p.jenis}, pajak ${p.jenisPajak}, saluran ${p.saluran}${p.cat ? `. Catatan: ${p.cat}` : '.'}`, label(u));
-    ev('doc', id, bad ? 'Aturan bisnis ditandai' : 'Ekstraksi dan pemeriksaan aturan selesai',
-      bad ? 'Satu atau lebih aturan gagal.' : `Semua aturan bisnis lolos (mesin: ${mode === 'bedrock' ? 'Amazon Bedrock' : 'simulasi'}).`, botName, true);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'kesalahan tidak diketahui';
-    const empty = { no: id, tgl: p.tgl, vendor: '', npwp: '', dpp: 0, ppn: 0, total: 0, rek: '' };
-    const zero = { no: 0, tgl: 0, vendor: 0, npwp: 0, dpp: 0, ppn: 0, total: 0, rek: 0 };
-    doc = {
-      id, no: id, nomorUrut, klien: p.klien, namaPT: client.namaPT, namaPIC: client.namaPIC, 
-      jenis: p.jenis, jenisPajak: p.jenisPajak, saluran: p.saluran, tgl: p.tgl, deadline: addDays(todayISO(), 7),
-      status: 'Perlu Tindakan', owner, uploader: u.id, reviewer: cand[0].id,
-      issue: 'Ekstraksi otomatis gagal. Unggah ulang atau minta reviewer mengisi manual.',
-      f: empty, conf: zero, src: { ...empty }, hasFile: true,
-    };
-    store.docs.push(doc);
-    store.files.set(id, p.file);
-    ev('doc', id, 'Dokumen diunggah', `File ${p.file.name}.`, label(u));
-    ev('doc', id, 'Ekstraksi gagal', msg, botName, true);
+  let owner: string;
+  if (u.role === 'pic') {
+    guard(u, 'doc:create');
+    owner = u.id;
+  } else {
+    guard(u, 'doc:create:delegated');
+    const po = store.users.find(x => x.id === p.picId);
+    if (!po || po.role !== 'pic' || po.status !== 'Aktif')
+      throw new Rule('Pilih PIC Klien yang menerima order ini.');
+    owner = po.id;
   }
-  ev('workload', id, `Tugas ditugaskan ke ${userName(doc.reviewer)}`, `Tenggat ${dstr(doc.deadline)}.`, botName, true);
-  return { doc, mode };
+
+  const cand = activeUsers('finance')
+    .filter(x => x.id !== u.id)
+    .sort((a, b) => openTasks(a.id) - openTasks(b.id));
+  if (!cand.length) throw new Rule('Belum ada Finance Reviewer aktif yang bisa menerima tugas.');
+
+  const id      = `D-${store.seq++}`;
+  const nomorUrut = client.nextSequence++;
+  const tgl     = p.tgl;
+  const today   = todayISO();
+  const fakeDpp = 8_000_000;
+  const a       = Math.round(fakeDpp * 0.7);
+
+  const doc: Doc = {
+    id, no: `INV-${store.seq}`, nomorUrut,
+    klien: p.klien, namaPT: client.namaPT, namaPIC: client.namaPIC,
+    jenis: p.jenis, jenisPajak: 'Tidak ada', saluran: p.saluran, tgl,
+    deadline: addDays(today, 7), status: 'Diproses',
+    owner, uploader: u.id, reviewer: cand[0].id,
+    issue: '', note: String(p.cat ?? '').slice(0, 300),
+    f: { no: `INV-${store.seq}`, tgl, vendor: p.klien + ' (vendor)',
+         npwp: '06.789.012.3-456.000', dpp: fakeDpp, ppn: 880_000, total: 8_880_000, rek: 'BCA 1122334455' },
+    conf: { no: 0.98, tgl: 0.97, vendor: 0.95, npwp: 0.93, dpp: 0.96, ppn: 0.94, total: 0.97, rek: 0.9 },
+    src: { no: `INV-${store.seq}`, tgl, vendor: p.klien + ' (vendor)',
+           npwp: '06.789.012.3-456.000', dpp: fakeDpp, ppn: 880_000, total: 8_880_000, rek: 'BCA 1122334455' },
+    hasFile: false,
+    items: [
+      { tgl, ket: 'Jasa layanan periode berjalan', jumlah: '1 paket', harga: a },
+      { tgl, ket: 'Biaya tambahan', jumlah: '1 paket', harga: fakeDpp - a },
+    ],
+    tax: null, approvers: 1, voucherNo: null,
+  };
+  store.docs.push(doc);
+
+  const who = u.role === 'support' ? `Dokumen diunggah atas order PIC ${userName(owner)}` : 'Dokumen diunggah';
+  ev('doc', id, who, `File ${p.fileName}. Klien ${p.klien}, ${p.jenis}${p.cat ? `. Catatan: ${p.cat}` : '.'}`, roleLabel(u));
+
+  // Simulate robot extraction after 2.6 s
+  setTimeout(() => {
+    doc.status = 'Dalam Review';
+    store.events.push({
+      k: 'doc', d: id, t: stamp(), a: 'Robot Admin',
+      w: 'Ekstraksi dan pemeriksaan aturan selesai',
+      x: 'Semua aturan bisnis lolos. Dokumen masuk antrean Finance Reviewer.', bot: true,
+    });
+    store.events.push({
+      k: 'workload', d: id, t: stamp(), a: 'Sistem',
+      w: `Tugas ditugaskan ke ${userName(doc.reviewer)}`,
+      x: `Tenggat ${dstr(doc.deadline)}.`, bot: true,
+    });
+  }, 2600);
+
+  return doc;
 }
 
-/* ---------------- Service Lead ---------------- */
+/* ── Workload ── */
 export function reassign(u: User, id: string, to: string): string {
   const d = findDoc(id);
   guard(u, 'task:reassign');
-  const t = store.users.find((x) => x.id === to);
+  const t = store.users.find(x => x.id === to);
   if (!t || t.role !== 'finance') throw new Rule('Penerima harus seorang Finance Reviewer.');
   if (t.id === d.uploader) throw new Rule('Pemisahan tugas: reviewer tidak boleh sama dengan pengunggah.');
   const old = d.reviewer;
   d.reviewer = to;
-  ev('workload', id, 'Tugas dialihkan', `Dari ${userName(old)} ke ${t.name}.`, label(u));
+  ev('workload', id, 'Tugas dialihkan', `Dari ${userName(old)} ke ${t.name}.`, roleLabel(u));
   return `Tugas ${d.no} dialihkan ke ${t.name}.`;
 }
 
-/* ---------------- System Admin ---------------- */
-export function usersFor(u: User): { id: string; name: string; role: RoleKey }[] {
+/* ── Clients ── */
+export function clientsFor(u: User): ClientSummary[] {
+  guard(u, 'client:manage');
+  return store.clients.map(c => {
+    const ds = store.docs.filter(d => d.klien === c.namaPT);
+    return {
+      name: c.namaPT,
+      code: store.klienCode[c.namaPT] ?? '??',
+      docs: ds.length,
+      pics: [...new Set(ds.map(d => userName(d.owner)))],
+    };
+  });
+}
+
+function makeClientCode(name: string): string {
+  const words = name.replace(/[^A-Za-z ]/g, '').split(/\s+/)
+    .filter(w => w && !['PT', 'CV', 'UD', 'KOPERASI'].includes(w.toUpperCase()));
+  let code = (words.map(w => w[0]).join('') || name.replace(/[^A-Za-z]/g, '')).toUpperCase().slice(0, 3);
+  if (code.length < 2) code = (code + 'XX').slice(0, 2);
+  const base = code; let i = 2;
+  while (Object.values(store.klienCode).includes(code)) code = base + (i++);
+  return code;
+}
+
+export function addClient(u: User, name: string): string {
+  guard(u, 'client:manage');
+  const n = name.trim();
+  if (!n) throw new Rule('Nama perusahaan wajib diisi.');
+  if (store.clients.some(c => c.namaPT.toLowerCase() === n.toLowerCase()))
+    throw new Rule(`Klien ${n} sudah terdaftar.`);
+  const id   = `CL-${store.clients.length + 1}`;
+  const code = makeClientCode(n);
+  store.clients.push({ id, namaPT: n, namaPIC: '', email: '', phone: '', address: '', nextSequence: 1 });
+  store.klienCode[n]     = code;
+  store.klienCounters[n] = 0;
+  ev('admin', '', 'Klien ditambahkan', `${n} (kode voucher ${code}).`, roleLabel(u));
+  return `Klien ${n} ditambahkan dengan kode ${code}.`;
+}
+
+/* ── Users / Auth ── */
+export function usersFor(u: User): User[] {
   guard(u, 'user:manage');
-  return store.users.map((x) => ({ id: x.id, name: x.name, role: x.role }));
+  return store.users.map(x => ({ ...x }));
 }
 
 export function setRole(u: User, uid: string, role: RoleKey): string {
   guard(u, 'user:manage');
   if (uid === u.id) throw new Rule('Anda tidak bisa mengubah peran akun sendiri.');
   if (!(role in ROLE_LABEL)) throw new Rule('Peran tidak dikenal.');
-  const t = store.users.find((x) => x.id === uid);
+  const t = store.users.find(x => x.id === uid);
   if (!t) throw new Rule('Pengguna tidak ditemukan.');
   const old = t.role;
   t.role = role;
-  ev('admin', '', 'Peran diubah', `Akun ${t.name}: ${ROLE_LABEL[old]} menjadi ${ROLE_LABEL[role]}.`, label(u));
+  ev('admin', '', 'Peran diubah', `Akun ${t.name}: ${ROLE_LABEL[old]} menjadi ${ROLE_LABEL[role]}.`, roleLabel(u));
   return `Peran ${t.name} diperbarui.`;
 }
 
-export function toggleDelegation(u: User, id: string): string {
-  guard(u, 'delegation:manage');
-  const g = store.deleg.find((x) => x.id === id);
-  if (!g) throw new Rule('Delegasi tidak ditemukan.');
-  g.active = !g.active;
-  ev('admin', '', g.active ? 'Delegasi diaktifkan' : 'Delegasi dicabut',
-    `Delegasi ${userName(g.support)} dari ${userName(g.pic)} (${g.klien.join(', ')}).`, label(u));
-  return g.active ? 'Delegasi diaktifkan.' : 'Delegasi dicabut. Akses langsung ditutup.';
+export function register(f: { name: string; email: string; role: RoleKey; pw: string; pw2: string }): string {
+  const name  = f.name.trim().slice(0, 60);
+  const email = f.email.trim().toLowerCase();
+  const pw    = f.pw ?? '';
+  if (name.length < 3) throw new Rule('Isi nama lengkap (minimal 3 huruf).');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Rule('Format email tidak valid.');
+  if (store.users.some(x => x.email === email)) throw new Rule('Email ini sudah terdaftar.');
+  if (pw.length < 8) throw new Rule('Kata sandi minimal 8 karakter.');
+  if (pw !== f.pw2) throw new Rule('Konfirmasi kata sandi tidak sama.');
+  if (!SELF_ROLES.includes(f.role)) throw new Rule('Pilih peran yang diajukan.');
+  const id = `u${Date.now()}`;
+  store.users.push({ id, name, role: f.role, about: 'Pendaftar baru, menunggu persetujuan.', email, status: 'Menunggu' });
+  store.creds.push({ id, email, pw });
+  const reqId = `R-${++store.reqSeq}`;
+  store.requests.push({
+    id: reqId, type: 'register', uid: id, by: id,
+    text: `${name} mendaftar sebagai pegawai (peran yang diminta: ${ROLE_LABEL[f.role]}).`,
+    date: todayISO(),
+  });
+  store.events.push({
+    k: 'admin', d: '', t: stamp(), a: `${name} (pendaftar)`,
+    w: 'Pendaftaran pegawai baru',
+    x: `${email}, peran yang diminta ${ROLE_LABEL[f.role]}. Menunggu persetujuan System Admin.`,
+  });
+  return email;
 }
 
-export function decideAccess(u: User, id: string, ok: boolean): string {
+export function createUser(u: User, f: { name: string; email: string; role: RoleKey; pw: string }): string {
+  guard(u, 'user:manage');
+  const name  = f.name.trim().slice(0, 60);
+  const email = f.email.trim().toLowerCase();
+  const pw    = f.pw ?? '';
+  if (name.length < 3) throw new Rule('Isi nama lengkap (minimal 3 huruf).');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Rule('Format email tidak valid.');
+  if (store.users.some(x => x.email === email)) throw new Rule('Email ini sudah terdaftar.');
+  if (!ROLE_LABEL[f.role]) throw new Rule('Pilih peran.');
+  if (pw.length < 8) throw new Rule('Kata sandi awal minimal 8 karakter.');
+  const id = `u${Date.now()}`;
+  store.users.push({ id, name, role: f.role, about: 'Dibuat oleh System Admin.', email, status: 'Aktif' });
+  store.creds.push({ id, email, pw });
+  ev('admin', '', 'Akun pegawai dibuat', `${name} (${email}) dengan peran ${ROLE_LABEL[f.role]}.`, roleLabel(u));
+  return `Akun ${name} dibuat.`;
+}
+
+export function decideAccess(u: User, id: string, ok: boolean, role?: RoleKey): string {
   guard(u, 'access:decide');
-  const i = store.requests.findIndex((r) => r.id === id);
+  const i = store.requests.findIndex(r => r.id === id);
   if (i < 0) throw new Rule('Permintaan tidak ditemukan.');
-  const r = store.requests[i];
-  if (ok && r.type === 'deleg') {
-    store.deleg.push({ id: `DL-${store.deleg.length + 1}`, support: 'andi', pic: 'eko', klien: ['PT Karya Nusa'], expires: addDays(todayISO(), 90), active: true });
+  const req = store.requests[i];
+
+  if (req.type === 'register') {
+    const t = store.users.find(x => x.id === req.uid);
+    if (t) {
+      if (ok) {
+        const rl = role ?? t.role;
+        if (!ROLE_LABEL[rl]) throw new Rule('Peran tidak valid.');
+        t.role = rl; t.status = 'Aktif';
+      } else {
+        t.status = 'Ditolak';
+      }
+      store.requests.splice(i, 1);
+      ev('admin', '', ok ? 'Pendaftaran pegawai disetujui' : 'Pendaftaran pegawai ditolak',
+        t.name + (ok ? ` aktif sebagai ${ROLE_LABEL[t.role]}.` : '.'), roleLabel(u));
+    }
+    return ok ? 'Pendaftaran disetujui.' : 'Pendaftaran ditolak.';
   }
-  if (ok && r.type === 'extend' && store.deleg[0]) store.deleg[0].expires = addDays(store.deleg[0].expires, 30);
+
   store.requests.splice(i, 1);
-  ev('admin', '', ok ? 'Permintaan akses disetujui' : 'Permintaan akses ditolak', r.text, label(u));
+  ev('admin', '', ok ? 'Permintaan akses disetujui' : 'Permintaan akses ditolak', req.text, roleLabel(u));
   return ok ? 'Permintaan disetujui.' : 'Permintaan ditolak.';
 }
 
-/* ---------------- riwayat audit ---------------- */
+/* ── Audit ── */
 export function auditFor(u: User): AuditEvent[] {
   const perm = ({
-    support: 'audit:read:delegated', finance: 'audit:read:assigned',
-    lead: 'audit:read:workload', admin: 'audit:read:admin',
+    pic:     'audit:read:own',
+    support: 'audit:read:delegated',
+    finance: 'audit:read:assigned',
+    lead:    'audit:read:workload',
+    admin:   'audit:read:admin',
   } as Record<RoleKey, string>)[u.role];
   guard(u, perm);
   return store.events
-    .filter((e) => {
-      if (u.role === 'lead') return e.k === 'workload';
+    .filter(e => {
+      if (u.role === 'lead')  return e.k === 'workload';
       if (u.role === 'admin') return e.k === 'admin' || e.k === 'security';
-      if (e.k !== 'doc') return false;
-      const d = store.docs.find((x) => x.id === e.d);
+      if (e.k !== 'doc')      return false;
+      const d = store.docs.find(x => x.id === e.d);
       return !!d && can(u, perm, d).ok;
     })
     .slice()
@@ -300,139 +544,37 @@ export function auditFor(u: User): AuditEvent[] {
 }
 
 export const docLabel = (id: string): string => {
-  const d = store.docs.find((x) => x.id === id);
-  return d ? `${d.no} - ${d.klien}` : id;
+  const d = store.docs.find(x => x.id === id);
+  return d ? `${d.no} – ${d.klien}` : id;
 };
 
-/* ---------------- uji kebijakan ---------------- */
-export function probe(u: User, index: number): { ok: boolean; why?: string } {
-  const p = PROBES[index];
-  if (!p) throw new Rule('Uji tidak dikenal.');
-  const perm = typeof p.perm === 'function' ? p.perm(u.role) : p.perm;
-  const d = p.docId ? store.docs.find((x) => x.id === p.docId) : null;
-  const r = can(u, perm, d);
-  if (!r.ok) logDeny(u, perm, r.why ?? '');
-  return r;
-}
+/* ── Login ── */
+export function authenticate(email: string, pw: string): { ok: true; user: User } | { ok: false; msg: string } {
+  const e = email.trim().toLowerCase();
+  if (!e || !pw) return { ok: false, msg: 'Isi email dan kata sandi.' };
+  if (e.length > 200 || pw.length > 200) return { ok: false, msg: 'Email atau kata sandi salah.' };
 
-/* ---------------- manajemen klien ---------------- */
-export function clientsFor(u: User) {
-  // Hanya System Admin dan Intake Support yang bisa melihat daftar klien
-  if (u.role !== 'admin' && u.role !== 'support') throw new Forbidden('Anda tidak memiliki akses ke manajemen klien.');
-  return store.clients.slice();
-}
+  const now  = Date.now();
+  const att  = store.attempts.get(e);
+  if (att && att.until > now)
+    return { ok: false, msg: `Terlalu banyak percobaan. Coba lagi dalam ${Math.ceil((att.until - now) / 1000)} detik.` };
 
-export interface ClientInput {
-  namaPT: string;
-  namaPIC: string;
-  email: string;
-  phone: string;
-  address: string;
-}
-
-export function addClient(u: User, input: ClientInput): string {
-  guard(u, 'client:manage');
-  
-  // Validasi input
-  if (!input.namaPT.trim()) throw new Rule('Nama PT wajib diisi.');
-  if (!input.namaPIC.trim()) throw new Rule('Nama PIC wajib diisi.');
-  if (!input.email.trim()) throw new Rule('Email wajib diisi.');
-  
-  // Cek duplikasi nama PT
-  if (store.clients.some((c) => c.namaPT === input.namaPT)) {
-    throw new Rule('Nama PT sudah terdaftar.');
-  }
-  
-  const id = `CL-${store.clients.length + 1}`;
-  const newClient = {
-    id,
-    namaPT: input.namaPT.trim(),
-    namaPIC: input.namaPIC.trim(),
-    email: input.email.trim(),
-    phone: input.phone.trim(),
-    address: input.address.trim(),
-    nextSequence: 1,
-  };
-  
-  store.clients.push(newClient);
-  
-  // Update KLIEN_OWNER untuk backward compatibility
-  // Assign ke user yang menambahkan (biasanya admin atau support yang menginput)
-  KLIEN_OWNER[newClient.namaPT] = u.id;
-  
-  ev('admin', '', 'Klien baru ditambahkan', `${newClient.namaPT} (PIC: ${newClient.namaPIC})`, label(u));
-  
-  return `Klien ${newClient.namaPT} berhasil ditambahkan.`;
-}
-
-
-/* ---------------- perbaikan dokumen yang ditolak ---------------- */
-export interface FixDocInput {
-  docId: string;
-  file?: { name: string; bytes: Buffer };
-  cat: string;
-}
-
-export async function fixRejectedDoc(u: User, input: FixDocInput): Promise<{ doc: Doc; mode: string }> {
-  const d = findDoc(input.docId);
-  
-  // Hanya Intake Support yang bisa memperbaiki dokumen yang ditolak
-  guard(u, 'doc:read:delegated', d);
-  
-  if (d.status !== 'Perlu Tindakan') {
-    throw new Rule('Dokumen ini tidak memerlukan perbaikan.');
-  }
-  
-  // Jika ada file baru, proses ulang
-  if (input.file) {
-    if (!/\.pdf$/i.test(input.file.name) || input.file.bytes.subarray(0, 4).toString() !== '%PDF') {
-      throw new Rule('File harus berformat PDF.');
+  const cred = store.creds.find(c => c.email === e);
+  const ok   = cred?.pw === pw;
+  if (!cred || !ok) {
+    const n = (att?.n ?? 0) + 1;
+    if (n >= 5) {
+      store.attempts.set(e, { n: 0, until: now + 60_000 });
+    } else {
+      store.attempts.set(e, { n, until: 0 });
     }
-    if (input.file.bytes.length > 10 * 1024 * 1024) {
-      throw new Rule('Ukuran file maksimal 10 MB.');
-    }
-    
-    let mode = 'simulasi';
-    const botName = 'Robot Admin';
-    
-    try {
-      const ex = await extractInvoice(input.file.bytes, d.klien);
-      mode = ex.mode;
-      const bad = tally(validate(ex.f, ex.conf)).err > 0;
-      
-      // Update dokumen dengan hasil ekstraksi baru
-      d.f = ex.f;
-      d.conf = ex.conf;
-      d.src = { ...ex.f };
-      d.status = bad ? 'Perlu Tindakan' : 'Dalam Review';
-      d.issue = bad ? 'Ada field yang gagal aturan bisnis setelah re-upload.' : '';
-      d.hasFile = true;
-      
-      store.files.set(d.id, input.file);
-      
-      ev('doc', d.id, 'Dokumen diperbaiki dan diunggah ulang',
-        `File baru: ${input.file.name}${input.cat ? `. Catatan: ${input.cat}` : '.'}`, label(u));
-      ev('doc', d.id, bad ? 'Aturan bisnis ditandai' : 'Ekstraksi dan pemeriksaan aturan selesai',
-        bad ? 'Satu atau lebih aturan gagal.' : `Semua aturan bisnis lolos (mesin: ${mode === 'bedrock' ? 'Amazon Bedrock' : 'simulasi'}).`, botName, true);
-      
-      if (!bad) {
-        ev('workload', d.id, 'Dokumen siap direview ulang', `Dokumen diperbaiki oleh ${u.name}, diteruskan ke ${userName(d.reviewer)}.`, label(u));
-      }
-      
-      return { doc: d, mode };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'kesalahan tidak diketahui';
-      throw new Rule(`Ekstraksi gagal: ${msg}`);
-    }
-  } else {
-    // Jika tidak ada file baru, hanya update catatan dan kembalikan ke reviewer
-    d.status = 'Dalam Review';
-    d.issue = '';
-    
-    ev('doc', d.id, 'Dokumen diperbaiki tanpa file baru',
-      `Intake Support melakukan perbaikan metadata${input.cat ? `. Catatan: ${input.cat}` : '.'}`, label(u));
-    ev('workload', d.id, 'Dokumen siap direview ulang', `Dokumen diperbaiki oleh ${u.name}, diteruskan ke ${userName(d.reviewer)}.`, label(u));
-    
-    return { doc: d, mode: 'manual' };
+    return { ok: false, msg: 'Email atau kata sandi salah.' };
   }
+
+  store.attempts.delete(e);
+  const user = store.users.find(u => u.id === cred.id);
+  if (!user) return { ok: false, msg: 'Akun tidak ditemukan.' };
+  if (user.status === 'Menunggu') return { ok: false, msg: 'Akun Anda masih menunggu persetujuan System Admin.' };
+  if (user.status === 'Ditolak')  return { ok: false, msg: 'Pendaftaran akun ini ditolak. Hubungi System Admin.' };
+  return { ok: true, user };
 }

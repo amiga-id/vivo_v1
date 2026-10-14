@@ -1,22 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useSession } from '@/lib/session';
 import { FinanceQueueScreen } from '@/components/screens';
-import { getUser } from '@/lib/session';
-import type { User } from '@/lib/types';
 
 export default function FinanceDashboard() {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const u = await getUser();
-      setUser(u);
-    };
-    loadUser();
-  }, []);
-
-  if (!user) {
-    return <div>Loading...</div>;
-  }
-
+  const { user, loading } = useSession();
+  if (loading || !user) return <div className="loading">Loading...</div>;
   return <FinanceQueueScreen user={user} />;
 }
