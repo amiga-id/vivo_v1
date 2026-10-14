@@ -174,12 +174,9 @@ async def login_account(
 async def logout_account(
     session: Annotated[AsyncSession, Depends(get_db)], id: UUID
 ) -> AuthToken:
-    async with session.begin() as trans:
-        await trans.execute(
-            update(Account)
-            .where(Account.id == id)
-            .values(last_logout=datetime.now(UTC))
-        )
+    await session.execute(
+        update(Account).where(Account.id == id).values(last_logout=datetime.now(UTC))
+    )
 
 
 async def current_account(

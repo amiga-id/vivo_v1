@@ -1,5 +1,6 @@
 from collections.abc import (
     AsyncGenerator,
+    Generator,
 )
 
 from httpx import (
@@ -9,6 +10,7 @@ from httpx import (
 from pytest_asyncio import fixture
 from sqlalchemy import (
     event,
+    select,
 )
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -23,6 +25,40 @@ from app.core.db import (
     get_db,
 )
 from app.main import app
+from app.models.account import (
+    Account,
+    AccountRole,
+)
+from app.services.auth import hash_password
+
+
+@fixture(scope="session")
+def test_password() -> Generator[str]:
+    return "12345678"
+
+
+@fixture(scope="session")
+def test_users(test_password: str) -> Generator[dict]:
+    return {
+        "default_user": Account(
+            name="Justin Case",
+            email="justin@example.com",
+            password_hash=hash_password(test_password),
+            role=AccountRole.SUPPORT,
+        ),
+        "admin_user": Account(
+            name="Jack Smith",
+            email="jack@example.com",
+            password_hash=hash_password(test_password),
+            role=AccountRole.ADMIN,
+        ),
+        "system_user": Account(
+            name="John Doe",
+            email="john@example.com",
+            password_hash=hash_password(test_password),
+            role=AccountRole.SYSTEM,
+        ),
+    }
 
 
 @fixture(scope="session", autouse=True)
@@ -43,9 +79,9 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
             table._prefixes.append("UNLOGGED")
 
     # Import all our models here
-    # from app.models import (  # noqa: F401
-    #     account,
-    # )
+    from app.models import (  # noqa: F401
+        account,
+    )
 
     # Clean out any old test data and build fresh tables
     async with engine.begin() as conn:
@@ -59,8 +95,8 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@fixture(scope="function")
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession]:
+@fixture(scope="session")
+async def db_session(test_engine, test_users) -> AsyncGenerator[AsyncSession]:
     """Provides a new, isolated database session for each test function.."""
 
     TestingSessionLocal = sessionmaker(
@@ -73,6 +109,12 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession]:
     session = TestingSessionLocal()
 
     try:
+        # Add initial data here
+        for user in test_users.values():
+            session.add(user)
+
+        await session.commit()
+
         yield session
     finally:
         # Roll back or clean up data after the test function completes
@@ -81,7 +123,7 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession]:
         await session.close()
 
 
-@fixture(scope="function")
+@fixture(scope="session")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     async def _override_get_db():
         try:
@@ -97,3 +139,30 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@fixture(scope="session")
+async def default_user(db_session: AsyncSession, test_users) -> AsyncGenerator[Account]:
+    """Default user account."""
+
+    return await db_session.scalar(
+        select(Account).where(Account.email == test_users["default_user"].email)
+    )
+
+
+@fixture(scope="session")
+async def admin_user(db_session: AsyncSession, test_users) -> AsyncGenerator[Account]:
+    """Admin user account."""
+
+    return await db_session.scalar(
+        select(Account).where(Account.email == test_users["admin_user"].email)
+    )
+
+
+@fixture(scope="session")
+async def system_user(db_session: AsyncSession, test_users) -> AsyncGenerator[Account]:
+    """System user account."""
+
+    return await db_session.scalar(
+        select(Account).where(Account.email == test_users["system_user"].email)
+    )

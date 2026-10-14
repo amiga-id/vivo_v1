@@ -29,6 +29,7 @@ from app.core.db import (
 )
 from app.schemas.health import HealthResponse
 from app.schemas.response import ApiResponse, ErrorDetails
+from app.services.auth import AuthenticationError
 from app.services.health import check_postgres_health
 
 # safety check to prevent obscure runtime errors later
@@ -137,6 +138,27 @@ async def custom_validation_exception_handler(
         status_code=status.HTTP_400_BAD_REQUEST,
         content=jsonable_encoder(
             ApiResponse[None](success=False, error=error), exclude_none=True
+        ),
+    )
+
+
+@app.exception_handler(AuthenticationError)
+async def custom_authentication_exception_handler(
+    request: Request, exc: AuthenticationError
+):
+    error = (
+        exc
+        if isinstance(exc, ErrorDetails)
+        else ErrorDetails(
+            code=status.HTTP_401_UNAUTHORIZED,
+            message=str(exc),
+        )
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content=jsonable_encoder(
+            ApiResponse[None](success=False, error=error, excelude_none=True)
         ),
     )
 
