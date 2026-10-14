@@ -39,10 +39,13 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
         await db.close()
 
 
-async def init_db(session: AsyncSession) -> None:
+async def init_db(session: AsyncSession, drop_db: bool = False) -> None:
     import app.models
 
     async with engine.begin() as conn:
+        if drop_db:
+            await conn.run_sync(Base.metadata.drop_all)
+
         await conn.run_sync(Base.metadata.create_all)
 
     query = select(app.models.Account).where(

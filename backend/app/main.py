@@ -53,12 +53,15 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.APP_INIT:
+    if settings.APP_INIT >= 1:
         print(" ▕  Initializing database")  # noqa: T201
 
         try:
             session = SessionLocal()
-            await init_db(session=session)
+            if settings.APP_INIT > 1:
+                print(" ▕  Droping tables")  # noqa: T201
+
+            await init_db(session=session, drop_db=settings.APP_INIT > 1)
         except Exception as ex:
             print(f"Error initializing database: {ex}")  # noqa: T201
         finally:

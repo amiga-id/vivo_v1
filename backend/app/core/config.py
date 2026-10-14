@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     FASTAPI_ENV: str = "production"
 
-    APP_INIT: bool = False
+    APP_INIT: int = 0
     APP_DEMO: bool = False
     APP_NAME: str = "AmigaVIVO"
     APP_DATABASE_URL: PostgresDsn
