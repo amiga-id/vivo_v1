@@ -6,12 +6,12 @@ import { Forbidden, Rule } from '@/lib/rbac';
 import { getDocForReview } from '@/lib/services';
 import { getUser } from '@/lib/session';
 import { validate } from '@/lib/validate';
-import type { Doc, ValidationResult } from '@/lib/types';
+import type { Doc, Validation } from '@/lib/types';
 
 export default function FinanceReview() {
   const { id } = useParams<{ id: string }>();
   const [doc, setDoc] = useState<Doc | null>(null);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [validation, setValidation] = useState<Validation | null>(null);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {

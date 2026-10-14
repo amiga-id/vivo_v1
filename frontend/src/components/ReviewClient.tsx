@@ -1,6 +1,6 @@
 'use client';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { correctField, decideDoc } from '@/lib/api';
 import { FIELDS } from '@/lib/constants';
@@ -12,7 +12,8 @@ import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 
 export default function ReviewClient({ doc, validation }: { doc: Doc; validation: Validation }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [pending, start] = useBusy();
   const [hl, setHl] = useState<FieldKey | null>(null);
@@ -28,13 +29,13 @@ export default function ReviewClient({ doc, validation }: { doc: Doc; validation
     const cur = def?.type === 'num' ? String(doc.f[k]) : String(doc.f[k]);
     const next = def?.type === 'num' ? String(Number(raw.replace(/\D/g, '') || 0)) : raw.trim();
     if (cur === next) return;
-    start(async () => { const r = await correctField(doc.id, k, raw); toast(r.msg, !r.ok); router.refresh(); });
+    start(async () => { const r = await correctField(doc.id, k, raw); toast(r.msg, !r.ok); navigate(location.pathname + location.search, { replace: true }); });
   };
   const decide = (kind: 'approve' | 'reject' | 'reqinfo') =>
     start(async () => {
       const r = await decideDoc(doc.id, kind, reason);
       toast(r.msg, !r.ok);
-      if (r.ok) router.push('/finance'); else router.refresh();
+      if (r.ok) navigate('/finance'); else navigate(location.pathname + location.search, { replace: true });
     });
 
   return (

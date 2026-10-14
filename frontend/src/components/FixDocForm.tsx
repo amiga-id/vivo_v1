@@ -1,6 +1,6 @@
 'use client';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { fixDocument } from '@/lib/api';
 import Icon from './Icon';
@@ -8,7 +8,7 @@ import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 
 export default function FixDocForm({ docId }: { docId: string }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const toast = useToast();
   const [pending, start] = useBusy();
   const [file, setFile] = useState<File | null>(null);
@@ -39,7 +39,7 @@ export default function FixDocForm({ docId }: { docId: string }) {
       const r = await fixDocument(docId, fd);
       toast(r.msg, !r.ok);
       if (r.ok) {
-        setTimeout(() => router.push('/support'), 500);
+        setTimeout(() => navigate('/support'), 500);
       }
     });
   };
@@ -80,7 +80,7 @@ export default function FixDocForm({ docId }: { docId: string }) {
       </div>
 
       <div className="actions" style={{ marginTop: 20 }}>
-        <button className="btn" onClick={() => router.back()} disabled={pending}>
+        <button className="btn" onClick={() => navigate(-1)} disabled={pending}>
           Batal
         </button>
         <button className="btn primary" disabled={pending} onClick={submit}>

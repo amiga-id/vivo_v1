@@ -16,8 +16,15 @@ export default function AdminUsers() {
       if (user) {
         setCurrentUser(user);
         const userData = usersFor(user);
-        setUsers(userData);
-        setNames(Object.fromEntries(userData.map((u) => [u.id, u.name])));
+        // Map the usersFor response to User type
+        const userObjects = userData.map((u) => ({
+          id: u.id,
+          name: u.name,
+          role: u.role as User['role'],
+          about: ''
+        }));
+        setUsers(userObjects);
+        setNames(Object.fromEntries(userObjects.map((u) => [u.id, u.name])));
         setDelegations(delegationsFor(user));
       }
     };

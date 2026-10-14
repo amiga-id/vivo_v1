@@ -1,6 +1,6 @@
 'use client';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { downloadVoucher } from '@/lib/api';
 import { rp } from '@/lib/format';
 import type { DocSummary, VoucherData } from '@/lib/types';
@@ -8,7 +8,7 @@ import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 
 export default function VoucherView({ list, v, base, canDownload }: { list: DocSummary[]; v: VoucherData; base: string; canDownload: boolean }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const toast = useToast();
   const [pending, start] = useBusy();
   const ok = v.status === 'Disetujui';
@@ -22,7 +22,7 @@ export default function VoucherView({ list, v, base, canDownload }: { list: DocS
     <>
       <div className="filters" style={{ marginBottom: 0 }}>
         <label className="m" htmlFor="vv">Dokumen</label>
-        <select className="inline" id="vv" value={v.id} onChange={(e) => router.push(`${base}?id=${e.target.value}`)}>
+        <select className="inline" id="vv" value={v.id} onChange={(e) => navigate(`${base}?id=${e.target.value}`)}>
           {list.map((x) => <option key={x.id} value={x.id}>{x.no} - {x.klien}</option>)}
         </select>
       </div>

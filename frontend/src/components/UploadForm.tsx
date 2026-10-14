@@ -1,6 +1,6 @@
 'use client';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { uploadDocument } from '@/lib/api';
 import { JENIS, SALURAN, JENIS_PAJAK } from '@/lib/constants';
@@ -10,7 +10,7 @@ import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 
 export default function UploadForm({ klien, support, today, home }: { klien: string[]; support: boolean; today: string; home: string }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const toast = useToast();
   const [pending, start] = useBusy();
   const [file, setFile] = useState<File | null>(null);
@@ -42,7 +42,7 @@ export default function UploadForm({ klien, support, today, home }: { klien: str
     start(async () => {
       const r = await uploadDocument(fd);
       toast(r.msg, !r.ok);
-      if (r.ok) router.push(home);
+      if (r.ok) navigate(home);
     });
   };
 

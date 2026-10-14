@@ -5,12 +5,21 @@ import type { User } from './types';
 
 const MAX_TRIES = 5;
 const LOCK_MS = 60_000;
-const DUMMY = hashPassword('tidak-dipakai'); // supaya waktu proses sama untuk email yang tidak dikenal
 
 export type AuthResult = { ok: true; user: User } | { ok: false; msg: string };
 
 const fail = (emailLabel: string, why: string) =>
   store.events.push({ k: 'security', d: '', t: stamp(), a: emailLabel, w: 'Login gagal', x: why });
+
+/** Dummy hash for failed login attempts - generated at runtime */
+let DUMMY_HASH: string | null = null;
+
+async function getDummyHash(): Promise<string> {
+  if (!DUMMY_HASH) {
+    DUMMY_HASH = await hashPassword('tidak-dipakai');
+  }
+  return DUMMY_HASH;
+}
 
 /**
  * Verifikasi email dan kata sandi.
@@ -18,7 +27,7 @@ const fail = (emailLabel: string, why: string) =>
  * Setelah 5 kali gagal, email dikunci 1 menit. Percobaan gagal masuk riwayat audit System Admin.
  * Produksi: ganti dengan Amazon Cognito.
  */
-export function authenticate(emailRaw: string, password: string): AuthResult {
+export async function authenticate(emailRaw: string, password: string): Promise<AuthResult> {
   const email = emailRaw.trim().toLowerCase();
   if (!email || !password) return { ok: false, msg: 'Isi email dan kata sandi.' };
   if (email.length > 200 || password.length > 200) return { ok: false, msg: 'Email atau kata sandi salah.' };
@@ -30,7 +39,7 @@ export function authenticate(emailRaw: string, password: string): AuthResult {
   }
 
   const cred = store.creds.find((c) => c.email === email);
-  const ok = verifyPassword(password, cred ? cred.hash : DUMMY);
+  const ok = verifyPassword(password, cred ? cred.hash : await getDummyHash());
   if (!cred || !ok) {
     const n = (a?.n ?? 0) + 1;
     if (n >= MAX_TRIES) {

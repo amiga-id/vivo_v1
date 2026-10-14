@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { dstr, todayISO } from '@/lib/format';
 import { activeDelegations } from '@/lib/rbac';
 import * as svc from '@/lib/services';
@@ -57,7 +57,7 @@ export function FinanceQueueScreen({ user }: { user: User }) {
               <div>{d.jenis}</div>
               <div><Badge status={d.status} /></div>
               <div><Due deadline={d.deadline} status={d.status} /></div>
-              <div><Link className="btn sm primary" href={`/finance/review/${d.id}`}>Tinjau</Link></div>
+              <div><Link className="btn sm primary" to={`/finance/review/${d.id}`}>Tinjau</Link></div>
             </div>
           ))}
         </div>

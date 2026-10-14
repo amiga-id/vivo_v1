@@ -1,13 +1,13 @@
 'use client';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { addNewClient } from '@/lib/api';
 import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 
 export default function AddClientForm() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const toast = useToast();
   const [pending, start] = useBusy();
   const [showForm, setShowForm] = useState(false);
@@ -46,7 +46,7 @@ export default function AddClientForm() {
       if (r.ok) {
         setForm({ namaPT: '', namaPIC: '', email: '', phone: '', address: '' });
         setShowForm(false);
-        router.refresh();
+        navigate(window.location.pathname + window.location.search, { replace: true });
       }
     });
   };

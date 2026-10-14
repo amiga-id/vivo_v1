@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { STATUSES } from '@/lib/constants';
 import type { DocSummary } from '@/lib/types';
@@ -54,10 +54,10 @@ export default function QueueClient({ rows, role }: { rows: DocSummary[]; role: 
               </div>
               <div>
                 {d.status === 'Perlu Tindakan'
-                  ? <Link className="btn sm pink" href={`/support/fix/${d.id}`}>Perbaiki</Link>
+                  ? <Link className="btn sm pink" to={`/support/fix/${d.id}`}>Perbaiki</Link>
                   : d.status === 'Disetujui'
-                    ? <Link className="btn sm" href="/support/voucher">Lihat voucher</Link>
-                    : <Link className="btn sm" href={`/support/audit?doc=${d.id}`}>Lacak</Link>}
+                    ? <Link className="btn sm" to="/support/voucher">Lihat voucher</Link>
+                    : <Link className="btn sm" to={`/support/audit?doc=${d.id}`}>Lacak</Link>}
               </div>
             </div>
           ))}

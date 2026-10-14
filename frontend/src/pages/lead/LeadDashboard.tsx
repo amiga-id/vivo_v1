@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LeadQueueScreen } from '@/components/screens';
+import { ClientQueueScreen } from '@/components/screens';
 import { getUser } from '@/lib/session';
 import type { User } from '@/lib/types';
 
@@ -18,5 +18,5 @@ export default function LeadDashboard() {
     return <div>Loading...</div>;
   }
 
-  return <LeadQueueScreen user={user} />;
+  return <ClientQueueScreen user={user} />;
 }

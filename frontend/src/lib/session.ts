@@ -1,47 +1,77 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import type { RoleKey, User } from './types';
 
 /**
  * Client-side session management
- * Session state stored server-side with httpOnly cookies
- * Client calls API to get current user info
+ * Session state stored in localStorage for React compatibility
  */
 
-let userCache: User | null | undefined = undefined;
+export interface SessionState {
+  user: User | null;
+  loading: boolean;
+}
 
-/** Get current user from server */
+let userCache: User | null = null;
+
+/** Get current user from localStorage or return null */
 export async function getUser(): Promise<User | null> {
-  // Return cached value if available
-  if (userCache !== undefined) {
+  if (userCache !== null) {
     return userCache;
   }
 
   try {
-    const response = await fetch('/api/auth/me', {
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      userCache = null;
-      return null;
+    const storedUser = localStorage.getItem('amiga_user');
+    if (storedUser) {
+      userCache = JSON.parse(storedUser);
+      return userCache;
     }
-
-    const data = await response.json();
-    userCache = data.user || null;
-    return userCache;
-  } catch {
-    userCache = null;
-    return null;
+  } catch (e) {
+    console.error('Error reading user from localStorage:', e);
   }
+
+  userCache = null;
+  return null;
 }
 
-/** Clear user cache (call after login/logout) */
-export function clearUserCache(): void {
-  userCache = undefined;
+/** Store user in cache and localStorage */
+export function setUser(user: User): void {
+  userCache = user;
+  localStorage.setItem('amiga_user', JSON.stringify(user));
+}
+
+/** Clear user from cache and localStorage */
+export function clearUser(): void {
+  userCache = null;
+  localStorage.removeItem('amiga_user');
 }
 
 export const homeOf = (role: RoleKey): string => `/${role}`;
 
-/** Require user to be logged in with specific role */
+/** Custom hook for React components to use session state */
+export function useSession() {
+  const [user, setUserState] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const storedUser = await getUser();
+      setUserState(storedUser);
+      setLoading(false);
+    };
+
+    checkSession();
+  }, []);
+
+  return { user, loading, setUser: setUserState, clearUser };
+}
+
+/** For backward compatibility with Next.js migration */
+export function clearUserCache(): void {
+  clearUser();
+}
+
+/** Require user to be logged in with specific role (throws error if not authenticated) */
 export async function requireUser(role: RoleKey): Promise<User> {
   const u = await getUser();
   if (!u) {

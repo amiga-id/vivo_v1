@@ -22,7 +22,7 @@ export default function HomePage() {
     checkUser();
 
     // Setup demo accounts
-    const demoMode = import.meta.env.VITE_DEMO_MODE;
+    const demoMode = import.meta.env.VITE_DEMO_MODE || 'on';
     if (demoMode !== 'off') {
       setDemo({
         password: import.meta.env.VITE_DEMO_PASSWORD || 'amiga2026',

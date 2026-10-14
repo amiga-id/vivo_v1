@@ -111,9 +111,23 @@ function seed(): Store {
     creds: [],
     attempts: new Map(),
   };
-  const pw = process.env.DEMO_PASSWORD || 'amiga2026';
-  st.creds = st.users.map((u) => ({ id: u.id, email: `${u.id}@amiga.demo`, hash: hashPassword(pw) }));
+  const pw = import.meta.env.VITE_DEMO_PASSWORD || 'amiga2026';
+  // For demo, use pre-computed hashes (in production, use async hashPassword)
+  st.creds = st.users.map((u) => ({ id: u.id, email: `${u.id}@amiga.demo`, hash: getStaticHash(pw) }));
   return st;
+}
+
+/** Get static hash for demo - in production use async hashPassword with crypto */
+function getStaticHash(pw: string): string {
+  // Simple deterministic hash for demo purposes
+  let hash = 0;
+  for (let i = 0; i < pw.length; i++) {
+    hash = ((hash << 5) - hash) + pw.charCodeAt(i);
+    hash |= 0;
+  }
+  // Format: salt:hash
+  const salt = 'demo-salt-2026';
+  return `${salt}:${Math.abs(hash).toString(16)}`;
 }
 
 const g = globalThis as unknown as { __amigaStore?: Store };
