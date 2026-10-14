@@ -15,6 +15,7 @@
     }
   },
 
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/Scripts/python",
   "python.envFile": "${workspaceFolder}/backend/.env",
   "python.testing.cwd": "${workspaceFolder}/backend",
   "python.testing.pytestArgs": [
