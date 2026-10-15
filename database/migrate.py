@@ -19,13 +19,17 @@ from os.path import (
 from dotenv import load_dotenv
 from psycopg import connect
 
-load_dotenv()
+load_dotenv(join(dirname(__file__), "..", "backend", ".env"))
 
-DATABASE_URL = getenv("DATABASE_URL")
+DATABASE_URL = getenv("DATABASE_URL") or getenv("APP_DATABASE_URL")
 MIGRATIONS_DIR = join(dirname(__file__), "migrations")
 
 
 def get_connection():
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "Set DATABASE_URL or APP_DATABASE_URL before running migrations."
+        )
     return connect(DATABASE_URL)
 
 

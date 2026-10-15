@@ -83,8 +83,8 @@ JWT_EXPIRE_MINUTES=
 AWS_REGION=
 # The AWS bearer token for authenticating with Bedrock runtime
 AWS_BEARER_TOKEN_BEDROCK=
-# The AWS model id used for conversing with Bedrock runtime
-AWS_BEDROCK_MODEL_ID=
+# Bedrock model or inference profile ID
+AWS_BEDROCK_MODEL_ID=apac.amazon.nova-lite-v1:0
 # The value for randomness and creativity of (LLM) output
 AWS_BEDROCK_TEMPERATURE=
 
@@ -156,7 +156,7 @@ The following list all commands that are often used in development. Ensure the f
 - Run the backend API server in development mode.
 
   ```sh
-  uv run --directory backend fastapi dev
+  uv run --directory backend fastapi dev --port 8001
   ```
 ## License
 

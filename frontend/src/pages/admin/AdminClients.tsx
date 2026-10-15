@@ -1,44 +1,359 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useSession } from '@/lib/session';
-import { AdminClientsScreen } from '@/components/screens';
-import * as api from '@/lib/api';
+import { getDatabaseAccounts } from '@/lib/auth-api';
+import { createVendor, getVendors } from '@/lib/vendor-api';
+import {
+  getClientAssignments,
+  getClients,
+  updateClientAssignments,
+} from '@/lib/document-api';
+import type { ClientOption } from '@/lib/document-api';
+import type { User, Vendor } from '@/lib/types';
 import { useToast } from '@/components/Toast';
-import { useBusy } from '@/components/useBusy';
 
 export default function AdminClients() {
-  const { user }         = useSession();
-  const toast            = useToast();
-  const [pending, start] = useBusy();
-  const [name, setName]  = useState('');
-  const [key, setKey]    = useState(0); // force re-render of screen
+  const { user } = useSession();
+  const toast = useToast();
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [intakeSupport, setIntakeSupport] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [supportLoading, setSupportLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [supportError, setSupportError] = useState('');
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [clientLoading, setClientLoading] = useState(true);
+  const [clientError, setClientError] = useState('');
+  const [assignmentBySupport, setAssignmentBySupport] = useState<Record<string, string[]>>({});
+  const [savingSupports, setSavingSupports] = useState<Record<string, boolean>>({});
+  const [form, setForm] = useState({
+    name: '',
+    pic: '',
+    email: '',
+    phone_number: '',
+    address: '',
+  });
+
+  const loadVendors = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setVendors(await getVendors());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadIntakeSupport = useCallback(async () => {
+    setSupportLoading(true);
+    setSupportError('');
+    try {
+      const accounts = await getDatabaseAccounts();
+      setIntakeSupport(
+        accounts
+          .filter(account => account.role === 'support')
+          .sort((first, second) => first.name.localeCompare(second.name)),
+      );
+    } catch (reason) {
+      setSupportError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSupportLoading(false);
+    }
+  }, []);
+
+  const loadManagedClients = useCallback(async () => {
+    setClientLoading(true);
+    setClientError('');
+    try {
+      const [clientRows, assignmentRows] = await Promise.all([
+        getClients(),
+        getClientAssignments(),
+      ]);
+      setClients(clientRows);
+      setAssignmentBySupport(Object.fromEntries(
+        assignmentRows.map(row => [row.support_id, row.client_ids]),
+      ));
+    } catch (reason) {
+      setClientError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setClientLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      void loadVendors();
+      void loadIntakeSupport();
+      void loadManagedClients();
+    }
+  }, [user, loadVendors, loadIntakeSupport, loadManagedClients]);
 
   if (!user) return <div className="loading">Loading...</div>;
 
-  const addClient = () => start(async () => {
-    const r = api.addClient(user, name);
-    toast(r.msg, !r.ok);
-    if (r.ok) { setName(''); setKey(k => k + 1); }
-  });
+  const updateForm = (field: keyof typeof form, value: string) =>
+    setForm(current => ({ ...current, [field]: value }));
+
+  const addVendor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPending(true);
+    try {
+      await createVendor(form);
+      setForm({ name: '', pic: '', email: '', phone_number: '', address: '' });
+      toast('Vendor berhasil ditambahkan ke database.', false);
+      await Promise.all([loadVendors(), loadManagedClients()]);
+    } catch (reason) {
+      toast(reason instanceof Error ? reason.message : String(reason), true);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const saveAssignment = async (supportId: string, clientIds: string[]) => {
+    const previousIds = assignmentBySupport[supportId] ?? [];
+    setSavingSupports(current => ({ ...current, [supportId]: true }));
+    setAssignmentBySupport(current => ({ ...current, [supportId]: clientIds }));
+    try {
+      const saved = await updateClientAssignments(supportId, clientIds);
+      setAssignmentBySupport(current => {
+        const next = Object.fromEntries(
+          Object.entries(current).map(([assignedSupportId, assignedClientIds]) => [
+            assignedSupportId,
+            assignedSupportId === supportId
+              ? saved.client_ids
+              : assignedClientIds.filter(id => !saved.client_ids.includes(id)),
+          ]),
+        );
+        return { ...next, [supportId]: saved.client_ids };
+      });
+      await loadVendors();
+    } catch (reason) {
+      setAssignmentBySupport(current => ({ ...current, [supportId]: previousIds }));
+      toast(reason instanceof Error ? reason.message : String(reason), true);
+    } finally {
+      setSavingSupports(current => ({ ...current, [supportId]: false }));
+    }
+  };
 
   return (
     <>
       <section className="card">
-        <h2>Tambah klien</h2>
+        <h2>Klien dan penugasan Intake Support</h2>
         <p className="sub">
-          Setelah terdaftar, PIC Klien dan Intake Support mana pun bisa mengunggah dokumen untuk klien ini.
+          Nama klien diambil dari data vendor. Tambahkan vendor pada formulir di bawah,
+          lalu tugaskan vendor tersebut kepada Intake Support.
         </p>
-        <div className="form">
-          <label className="full">
-            Nama perusahaan
-            <input type="text" value={name} onChange={e => setName(e.target.value)}
-              placeholder="Contoh: PT Sumber Makmur" />
-          </label>
-        </div>
-        <div className="actions" style={{ marginTop: 16 }}>
-          <button className="btn primary" disabled={pending} onClick={addClient}>Tambah klien</button>
-        </div>
+        {clientError && (
+          <div className="auth-err" role="alert">
+            Gagal memuat klien atau penugasan: {clientError}{' '}
+            <button className="btn sm" type="button" onClick={() => void loadManagedClients()}>
+              Coba lagi
+            </button>
+          </div>
+        )}
+        {clientLoading ? (
+          <div className="loading">Memuat klien dan penugasan...</div>
+        ) : !clientError && (
+          <>
+            <div className="tblw" style={{ marginTop: 18 }}>
+              <table className="tbl">
+                <thead><tr><th>Nama vendor untuk pilihan Klien</th></tr></thead>
+                <tbody>
+                  {clients.length === 0 ? (
+                    <tr><td style={{ color: '#999' }}>Belum ada vendor di database.</td></tr>
+                  ) : clients.map(client => (
+                    <tr key={client.id}><td>{client.name}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <h3 style={{ marginTop: 22 }}>Penugasan per Intake Support</h3>
+            {supportError && (
+              <div className="auth-err" role="alert">
+                Gagal memuat akun Intake Support: {supportError}{' '}
+                <button className="btn sm" type="button" onClick={() => void loadIntakeSupport()}>
+                  Coba lagi
+                </button>
+              </div>
+            )}
+            <div className="queue">
+              {intakeSupport.length === 0 ? (
+                <div className="sub">
+                  {supportLoading
+                    ? 'Memuat akun Intake Support...'
+                    : 'Belum ada akun Intake Support.'}
+                </div>
+              ) : intakeSupport.map(account => {
+                const selected = assignmentBySupport[account.id] ?? [];
+                return (
+                  <div
+                    className="q"
+                    key={account.id}
+                    style={{ gridTemplateColumns: '1fr 2fr auto' }}
+                  >
+                    <div>
+                      <div className="t">{account.name}</div>
+                      <div className="m">{account.email}</div>
+                    </div>
+                    <div className="form">
+                      {clients.length === 0 ? (
+                        <span className="m">Tambahkan vendor terlebih dahulu.</span>
+                      ) : clients.map(client => (
+                        <label
+                          key={client.id}
+                          style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(client.id)}
+                            disabled={savingSupports[account.id] || Boolean(clientError)}
+                            onChange={event => {
+                              const checked = event.target.checked;
+                              const nextIds = checked
+                                ? [...selected, client.id]
+                                : selected.filter(id => id !== client.id);
+                              void saveAssignment(account.id, nextIds);
+                            }}
+                          />
+                          {client.name}
+                        </label>
+                      ))}
+                    </div>
+                    <span className="m" role="status" aria-live="polite">
+                      {savingSupports[account.id]
+                        ? 'Menyimpan perubahan...'
+                        : 'Checkbox tersimpan otomatis'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </section>
-      <AdminClientsScreen key={key} user={user} />
+
+      <section className="card">
+        <h2>Tambah vendor</h2>
+        <p className="sub">
+          Data disimpan pada database vendor dan digunakan sebagai referensi perusahaan.
+        </p>
+        <form onSubmit={addVendor}>
+          <div className="form">
+            <label>
+              Nama perusahaan
+              <input type="text" value={form.name}
+                onChange={event => updateForm('name', event.target.value)}
+                placeholder="Contoh: PT Sumber Makmur" maxLength={255} required />
+            </label>
+            <label>
+              Nama PIC
+              <select value={form.pic}
+                onChange={event => updateForm('pic', event.target.value)}
+                disabled={supportLoading || Boolean(supportError) || intakeSupport.length === 0}
+                required>
+                <option value="">
+                  {supportLoading ? 'Memuat Intake Support...' : 'Pilih Intake Support'}
+                </option>
+                {intakeSupport.map(account => (
+                  <option key={account.id} value={account.name}>{account.name}</option>
+                ))}
+              </select>
+            </label>
+            {supportError && (
+              <div className="full">
+                <div className="auth-err" role="alert">
+                  Gagal memuat data Intake Support: {supportError}
+                </div>
+                <button className="btn sm" type="button" onClick={() => void loadIntakeSupport()}>
+                  Coba muat ulang Intake Support
+                </button>
+              </div>
+            )}
+            {!supportLoading && !supportError && intakeSupport.length === 0 && (
+              <div className="full auth-err" role="alert">
+                Belum ada akun Intake Support. Tambahkan akun support terlebih dahulu.
+              </div>
+            )}
+            <label>
+              Email
+              <input type="email" value={form.email}
+                onChange={event => updateForm('email', event.target.value)}
+                placeholder="pic@perusahaan.com" maxLength={255} required />
+            </label>
+            <label>
+              Nomor telepon
+              <input type="tel" value={form.phone_number}
+                onChange={event => updateForm('phone_number', event.target.value)}
+                placeholder="Opsional" maxLength={255} />
+            </label>
+            <label className="full">
+              Alamat
+              <input type="text" value={form.address}
+                onChange={event => updateForm('address', event.target.value)}
+                placeholder="Opsional" maxLength={255} />
+            </label>
+          </div>
+          <div className="actions" style={{ marginTop: 16 }}>
+            <button className="btn primary" disabled={pending}>
+              {pending ? 'Menyimpan...' : 'Tambah vendor'}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="card">
+        <h2>Daftar klien / vendor</h2>
+        <p className="sub">
+          Daftar ini diambil langsung dari database vendor.
+        </p>
+        {error && <div className="auth-err" role="alert">{error}</div>}
+        {loading ? (
+          <div className="loading">Memuat data vendor...</div>
+        ) : (
+          <>
+            {error ? (
+              <button className="btn sm" onClick={() => void loadVendors()}>
+                Coba muat ulang
+              </button>
+            ) : (
+              <div className="tblw">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Perusahaan</th><th>PIC</th><th>Email</th>
+                      <th>Telepon</th><th>Alamat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vendors.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: '#999' }}>
+                          Belum ada data klien / vendor.
+                        </td>
+                      </tr>
+                    ) : vendors.map(vendor => (
+                      <tr key={vendor.id}>
+                        <td><strong>{vendor.name}</strong></td>
+                        <td>{vendor.pic}</td>
+                        <td className="m">{vendor.email}</td>
+                        <td>{vendor.phone_number || <span className="m">-</span>}</td>
+                        <td>{vendor.address || <span className="m">-</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+        {!loading && !error && (
+          <p className="sub" style={{ marginBottom: 0 }}>
+            {vendors.length} klien / vendor
+          </p>
+        )}
+      </section>
     </>
   );
 }

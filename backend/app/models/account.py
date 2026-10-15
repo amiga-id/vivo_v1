@@ -18,6 +18,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.sql import func
 
+from app.core.config import settings
 from app.core.db import Base
 
 if TYPE_CHECKING:
@@ -70,8 +71,15 @@ class Account(Base):
     )
 
     @property
-    def is_admin(self):
-        return self.role == AccountRole.SYSTEM or self.role == AccountRole.ADMIN
+    def is_system(self) -> bool:
+        return (
+            self.role == AccountRole.SYSTEM
+            or self.email.lower() == str(settings.APP_SYSTEM_USER_EMAIL).lower()
+        )
+
+    @property
+    def is_admin(self) -> bool:
+        return self.is_system or self.role == AccountRole.ADMIN
 
     @property
     def is_support(self):

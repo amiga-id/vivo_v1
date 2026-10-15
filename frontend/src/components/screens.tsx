@@ -36,7 +36,7 @@ export function ClientQueueScreen({ user }: { user: User }) {
       </div>
 
       <section className="card">
-        <h2>{user.role === 'pic' ? 'Antrean order saya' : 'Antrean Intake Support'}</h2>
+        <h2>Antrean Intake Support</h2>
         <p className="sub">Dokumen yang dikembalikan Finance untuk diperbaiki ditandai merah.</p>
 
         <div className="queue">
@@ -79,11 +79,10 @@ function ClientQueueRow({ d, base }: { d: DocSummary; base: string }) {
   }
 
   return (
-    <div className="q">
+    <div className="q" style={{ gridTemplateColumns: '1.5fr 1.2fr 1fr 1.2fr auto' }}>
       <div><div className="t">{d.no}</div><div className="m">{d.klien}</div></div>
       <div><div>{d.jenis}</div><div className="m">PIC {ownerName}</div></div>
       <div><Badge status={d.status} /></div>
-      <div><Due deadline={d.deadline} status={d.status} /></div>
       <div>{notice}</div>
       <div>{action}</div>
     </div>
@@ -115,11 +114,10 @@ export function FinanceQueueScreen({ user }: { user: User }) {
             </Empty>
           )}
           {rows.map(d => (
-            <div className="q" style={{ gridTemplateColumns: '1.6fr 1.2fr 1fr 1.2fr auto' }} key={d.id}>
+            <div className="q" style={{ gridTemplateColumns: '1.6fr 1.2fr 1fr auto' }} key={d.id}>
               <div><div className="t">{d.no}</div><div className="m">{d.klien}</div></div>
               <div>{d.jenis}</div>
               <div><Badge status={d.status} /></div>
-              <div><Due deadline={d.deadline} status={d.status} /></div>
               <div><Link className="btn sm primary" to={`/finance/review/${d.id}`}>Tinjau</Link></div>
             </div>
           ))}
@@ -162,7 +160,7 @@ export function LeadWorkloadScreen({ user }: { user: User }) {
           <table className="tbl">
             <thead>
               <tr>
-                <th>Dokumen</th><th>Status</th><th>Tenggat</th>
+                <th>Dokumen</th><th>Status</th>
                 <th>Penugasan</th><th>Reviewer</th>
               </tr>
             </thead>
@@ -171,7 +169,6 @@ export function LeadWorkloadScreen({ user }: { user: User }) {
                 <tr key={d.id}>
                   <td><b>{d.no}</b><div className="m">{d.klien}</div></td>
                   <td><Badge status={d.status} /></td>
-                  <td><Due deadline={d.deadline} status={d.status} /></td>
                   <td>{d.conflict
                     ? <span className="badge s-Konflik">Konflik penugasan</span>
                     : <span className="m">Aman</span>}
@@ -281,10 +278,10 @@ export function AdminAccessScreen({ user }: { user: User }) {
         <div className="kpi warn"><b>{reqs.length}</b><span>Permintaan akses menunggu</span></div>
       </div>
       <section className="card">
-        <h2>Pendaftaran dan permintaan akses</h2>
+        <h2>Permintaan akses</h2>
         <p className="sub">
-          Pendaftaran pegawai baru menunggu persetujuan Anda di sini.
-          Tetapkan peran akhir sebelum menyetujui.
+          Tinjau permintaan akses akun di sini. Akun pegawai baru dibuat langsung oleh
+          System Admin melalui panel pengguna.
         </p>
         {reqs.length === 0
           ? <Empty title="Tidak ada permintaan">Permintaan akses baru akan muncul di sini.</Empty>
@@ -310,46 +307,6 @@ export function AdminAccessScreen({ user }: { user: User }) {
               ))}
             </div>
           )}
-      </section>
-    </>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Admin – clients screen
-───────────────────────────────────────────── */
-export function AdminClientsScreen({ user }: { user: User }) {
-  const clients = svc.clientsFor(user);
-  return (
-    <>
-      <section className="card">
-        <h2>Daftar klien</h2>
-        <p className="sub">
-          Klien tidak terikat pada satu PIC. PIC melekat pada order (dokumen).
-        </p>
-        <div className="tblw">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Perusahaan</th><th>Kode voucher</th>
-                <th>PIC yang pernah membawa order</th><th>Dokumen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.length === 0 && (
-                <tr><td colSpan={4} style={{ textAlign: 'center', color: '#999' }}>Belum ada klien</td></tr>
-              )}
-              {clients.map(c => (
-                <tr key={c.name}>
-                  <td><strong>{c.name}</strong></td>
-                  <td>{c.code}</td>
-                  <td>{c.pics.length ? c.pics.join(', ') : <span className="m">Belum ada order</span>}</td>
-                  <td>{c.docs}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </section>
     </>
   );

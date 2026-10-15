@@ -29,7 +29,6 @@ import LeadAssign    from './pages/lead/LeadAssign';
 import SupportLayout    from './pages/support/SupportLayout';
 import SupportDashboard from './pages/support/SupportDashboard';
 import SupportUpload    from './pages/support/SupportUpload';
-import SupportAudit     from './pages/support/SupportAudit';
 import SupportVoucher   from './pages/support/SupportVoucher';
 import SupportFix       from './pages/support/SupportFix';
 import SupportTax       from './pages/support/SupportTax';
@@ -46,7 +45,6 @@ export default function App() {
           <Route index           element={<SupportDashboard />} />
           <Route path="upload"   element={<SupportUpload />} />
           <Route path="voucher"  element={<SupportVoucher />} />
-          <Route path="audit"    element={<SupportAudit />} />
           <Route path="fix/:id"  element={<SupportFix />} />
           <Route path="tax/:id"  element={<SupportTax />} />
         </Route>

@@ -9,16 +9,15 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.sid import from_uuid
-from app.models.account import Account
+from app.core.sid import to_uuid
+from app.models.account import Account, AccountRole
 from app.schemas.auth import (
+    AccountCreateRequest,
     AccountFilterRequest,
     AccountResponse,
     AccountUpdateRequest,
     LoginRequest,
     LoginResponse,
-    RegisterRequest,
-    RegisterResponse,
 )
 from app.schemas.response import (
     ApiResponse,
@@ -40,38 +39,6 @@ from app.services.auth import (
 )
 
 router = APIRouter(tags=["Auth"], prefix="/auth")
-
-
-@router.post(
-    "/register",
-    status_code=status.HTTP_201_CREATED,
-    response_model=ApiResponse[RegisterResponse],
-    response_model_exclude_none=True,
-)
-async def register(
-    request: RegisterRequest, session: Annotated[AsyncSession, Depends(get_db)]
-):
-    try:
-        account = await create_account(
-            session=session,
-            name=request.name,
-            email=request.email,
-            password=request.password,
-        )
-
-        return ApiResponse[RegisterResponse](
-            success=True,
-            data=RegisterResponse(
-                id=from_uuid(account.id),
-                name=account.name,
-                email=account.email,
-                created_at=account.created_at_iso,
-            ),
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-        ) from exc
 
 
 @router.post(
@@ -105,6 +72,39 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+
+
+@router.post(
+    "/accounts/create",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ApiResponse[AccountResponse],
+    response_model_exclude_none=True,
+)
+async def create_account_by_admin(
+    request: AccountCreateRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[Account, Depends(current_account)],
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an administrator can create accounts.",
+        )
+
+    try:
+        account = await create_account(
+            session=session,
+            name=request.name,
+            email=request.email,
+            password=request.password,
+            role=AccountRole(request.role),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+
+    return ApiResponse(success=True, data=from_account(account))
 
 
 @router.post(
@@ -203,6 +203,11 @@ async def patch_account(
     try:
         if not current_user.is_admin:
             raise AuthenticationError("Unauthorized")
+        if request.role is not None and to_uuid(id) == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You cannot change your own role.",
+            )
 
         [success, account] = await update_account(session, id, request)
 

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import (
     BaseModel,
     computed_field,
@@ -16,10 +18,11 @@ class AuthToken(BaseModel):
         return f"{self.token_type.capitalize()} {self.access_token}"
 
 
-class RegisterRequest(BaseModel):
+class AccountCreateRequest(BaseModel):
     name: str
     email: str
     password: str
+    role: Literal["support", "reviewer", "lead", "admin"] = "support"
 
     @field_validator("email")
     @classmethod
@@ -27,13 +30,6 @@ class RegisterRequest(BaseModel):
         if "@" not in v or "." not in v.split("@")[-1]:
             raise ValueError("Invalid email address")
         return v.lower().strip()
-
-
-class RegisterResponse(BaseModel):
-    id: str
-    name: str
-    email: str
-    created_at: str
 
 
 class LoginRequest(BaseModel):
@@ -65,6 +61,7 @@ class AccountUpdateRequest(BaseModel):
     phone_number: str | None = None
     avatar_url: str | None = None
     about: str | None = None
+    role: Literal["support", "reviewer", "lead", "admin"] | None = None
 
 
 class AccountResponse(BaseModel):

@@ -4,7 +4,8 @@ import type { Status } from '@/lib/types';
 import Icon from './Icon';
 
 export function Badge({ status }: { status: string }) {
-  return <span className={`badge s-${status.split(' ')[0]}`}>{status}</span>;
+  const statusClass = status.trim().replace(/\s+/g, '-');
+  return <span className={`badge s-${statusClass}`}>{status}</span>;
 }
 
 export function Due({ deadline, status }: { deadline: string; status: Status }) {

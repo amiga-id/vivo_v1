@@ -18,7 +18,11 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Buka http://localhost:3000. Halaman utamanya adalah login (email dan kata sandi). Untuk mencoba, buka panel "Akun contoh" lalu pilih salah satu, atau ketik manual: `dewi@amiga.demo`, `eko@`, `andi@`, `rina@`, `hana@`, `bayu@`, `sari@` (semuanya `@amiga.demo`) dengan kata sandi `amiga2026`. Tanpa `BEDROCK_MODEL_ID`, ekstraksi memakai mode simulasi,
+Jalankan API backend dari root repository di terminal lain dengan
+`uv run --directory backend fastapi dev --port 8001`. Frontend meneruskan request
+`/api` ke backend di port tersebut.
+
+Buka http://localhost:3001. Halaman utamanya adalah login (email dan kata sandi). Untuk mencoba, buka panel "Akun contoh" lalu pilih salah satu, atau ketik manual: `dewi@amiga.demo`, `eko@`, `andi@`, `rina@`, `hana@`, `bayu@`, `sari@` (semuanya `@amiga.demo`) dengan kata sandi `amiga2026`. Tanpa `BEDROCK_MODEL_ID`, ekstraksi memakai mode simulasi,
 jadi tidak perlu kredensial AWS. Sebelum push, jalankan `npm run typecheck` dan `npm run build` sekali,
 lalu commit file `package-lock.json` yang dibuat `npm install`.
 

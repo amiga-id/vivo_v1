@@ -1,18 +1,26 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearUser } from '@/lib/session';
+import { signOut } from '@/lib/api';
+import { useSession } from '@/lib/session';
 import { ROLE_LABEL, ROLE_UI } from '@/lib/constants';
 import type { User } from '@/lib/types';
 import Icon from './Icon';
 import NavTabs from './NavTabs';
-import ProbePanel from './ProbePanel';
+import { useToast } from './Toast';
 import { Brand } from './ui';
 
 export default function Workspace({ user, children }: { user: User; children: ReactNode }) {
   const navigate = useNavigate();
+  const toast = useToast();
+  const { clearUser } = useSession();
   const ui = ROLE_UI[user.role];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), true);
+    }
     clearUser();
     navigate('/', { replace: true });
   };
@@ -42,9 +50,9 @@ export default function Workspace({ user, children }: { user: User; children: Re
         <NavTabs tabs={ui.tabs} label={`Menu ${ROLE_LABEL[user.role]}`} />
         <div className="screen">
           {children}
-          <ProbePanel who={`${user.name} (${ROLE_LABEL[user.role]})`} />
         </div>
       </main>
+      <footer className="workspace-footer">© 2026 AMIGA</footer>
     </>
   );
 }

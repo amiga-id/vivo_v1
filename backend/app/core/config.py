@@ -45,12 +45,13 @@ class Settings(BaseSettings):
 
     AWS_BEARER_TOKEN_BEDROCK: str
     AWS_REGION: str = "ap-southeast-1"
-    AWS_BEDROCK_MODEL_ID: str = "amazon.nova-lite-v1:0"
+    AWS_BEDROCK_MODEL_ID: str = "apac.amazon.nova-lite-v1:0"
     AWS_BEDROCK_TEMPERATURE: float = 0.1
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_KNOWLEDGE_BASE_ID: str
     AWS_KNOWLEDGE_BASE_MODEL_ARN: str
+    S3_BUCKET: str = "bedrock-kb-student3-1791858279"
 
     TEST_DATABASE_URL: PostgresDsn | None = None
 

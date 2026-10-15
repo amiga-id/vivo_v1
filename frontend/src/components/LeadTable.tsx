@@ -1,6 +1,6 @@
 import * as api from '@/lib/api';
 import type { WorkloadRow } from '@/lib/types';
-import { Badge, Due } from './ui';
+import { Badge } from './ui';
 import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 import { useSession } from '@/lib/session';
@@ -42,7 +42,7 @@ export default function LeadTable({
           <table className="tbl">
             <thead>
               <tr>
-                <th>Dokumen</th><th>Status</th><th>Tenggat</th>
+                <th>Dokumen</th><th>Status</th>
                 <th>Penugasan</th><th>Reviewer</th>
               </tr>
             </thead>
@@ -51,7 +51,6 @@ export default function LeadTable({
                 <tr key={d.id}>
                   <td><b>{d.no}</b><div className="m">{d.klien}</div></td>
                   <td><Badge status={d.status} /></td>
-                  <td><Due deadline={d.deadline} status={d.status} /></td>
                   <td>
                     {d.conflict
                       ? <span className="badge s-Konflik">Konflik penugasan</span>

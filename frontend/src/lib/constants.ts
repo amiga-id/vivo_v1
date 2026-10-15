@@ -21,7 +21,6 @@ export const FIELDS: { k: FieldKey; label: string; type: 'text' | 'date' | 'num'
 export const JENIS    = ['Pembayaran vendor', 'Reimburse', 'Pajak', 'Payroll'];
 // SALURAN removed — no longer collected
 export const STATUSES = ['Diproses', 'Dalam Review', 'Dikembalikan', 'Disetujui', 'Ditolak'];
-export const SELF_ROLES: RoleKey[] = ['support', 'finance', 'lead'];
 
 /** Tax presets — shown as checkboxes in the upload form */
 export const TAX_PRESETS: (TaxLine & { hint: string })[] = [
@@ -44,8 +43,6 @@ export const ROLE_UI: Record<RoleKey, RoleUi> = {
     tabs: [
       { href: '/support',         label: 'Antrean',       icon: 'queue'   },
       { href: '/support/upload',  label: 'Unggah',        icon: 'upload'  },
-      { href: '/support/voucher', label: 'Voucher',       icon: 'voucher' },
-      { href: '/support/audit',   label: 'Riwayat audit', icon: 'audit'   },
     ],
   },
   finance: {
@@ -60,20 +57,19 @@ export const ROLE_UI: Record<RoleKey, RoleUi> = {
   },
   lead: {
     h: 'Beban kerja tim',
-    p: 'Pantau antrean, alihkan tugas, dan atur penugasan klien ke Intake Support.',
+    p: 'Pantau antrean tim dan beban kerja reviewer.',
     scope: 'Layar ini tidak menampilkan isi dokumen atau nilai transaksi.',
     tabs: [
       { href: '/lead',            label: 'Beban kerja',    icon: 'queue'   },
-      { href: '/lead/assign',     label: 'Penugasan klien',icon: 'users'   },
-      { href: '/lead/audit',      label: 'Riwayat',        icon: 'audit'   },
+      { href: '/lead/audit',      label: 'Riwayat',        icon: 'audit'  },
     ],
   },
   admin: {
     h: 'Akun pegawai, peran, dan klien',
-    p: 'Setujui pendaftaran, buat akun, atur peran, dan kelola daftar klien.',
+    p: 'Buat akun pegawai, atur peran, dan kelola daftar klien.',
     scope: 'Layar ini tidak memuat dokumen atau transaksi.',
     tabs: [
-      { href: '/admin',           label: 'Pendaftaran & akses', icon: 'queue'  },
+      { href: '/admin',           label: 'Permintaan akses',    icon: 'queue'  },
       { href: '/admin/users',     label: 'Akun pegawai',        icon: 'users'  },
       { href: '/admin/clients',   label: 'Klien',               icon: 'users'  },
       { href: '/admin/audit',     label: 'Riwayat audit',       icon: 'audit'  },

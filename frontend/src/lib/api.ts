@@ -1,4 +1,11 @@
 import * as svc from './services';
+import {
+  createDatabaseAccount,
+  getDatabaseAccounts,
+  signInWithDatabase,
+  signOutFromDatabase,
+  updateDatabaseAccountRole,
+} from './auth-api';
 import type {
   ActionResult, Assignment, ClientSummary, DocSummary,
   FieldKey, RoleKey, TaxDoc, TaxLine, User, VoucherData, WorkloadRow,
@@ -8,10 +15,21 @@ const ok  = (msg: string): ActionResult => ({ ok: true,  msg });
 const err = (e: unknown): ActionResult  => ({ ok: false, msg: e instanceof Error ? e.message : String(e) });
 
 /* ── Auth ── */
-export function signIn(email: string, pw: string): { ok: boolean; msg: string; user?: User } {
-  const r = svc.authenticate(email, pw);
-  if (r.ok) return { ok: true, msg: 'Berhasil masuk.', user: r.user };
-  return { ok: false, msg: r.msg };
+export async function signIn(email: string, pw: string): Promise<{ ok: boolean; msg: string; user?: User }> {
+  try {
+    const user = await signInWithDatabase(email, pw);
+    return { ok: true, msg: 'Berhasil masuk.', user };
+  } catch (error) {
+    return { ok: false, msg: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function signOut(): Promise<void> {
+  await signOutFromDatabase();
+}
+
+export async function listAccounts(): Promise<User[]> {
+  return getDatabaseAccounts();
 }
 
 /* ── Queue ── */
@@ -76,17 +94,32 @@ export function addClient(user: User, name: string): ActionResult {
 
 /* ── Users ── */
 export function getUsers(user: User): User[]                { return svc.usersFor(user); }
-export function setRole(user: User, uid: string, role: RoleKey): ActionResult {
-  try { return ok(svc.setRole(user, uid, role)); } catch (e) { return err(e); }
+export async function setRole(_user: User, uid: string, role: RoleKey): Promise<ActionResult> {
+  try {
+    await updateDatabaseAccountRole(uid, role);
+    return ok('Peran akun berhasil diperbarui.');
+  } catch (e) {
+    return err(e);
+  }
 }
-export function register(f: { name: string; email: string; role: RoleKey; pw: string; pw2: string }): ActionResult {
-  try { return ok(svc.register(f)); } catch (e) { return err(e); }
+export async function createUser(
+  _user: User,
+  f: { name: string; email: string; role: RoleKey; pw: string },
+): Promise<ActionResult> {
+  try {
+    await createDatabaseAccount({
+      name: f.name,
+      email: f.email,
+      role: f.role,
+      password: f.pw,
+    });
+    return ok('Akun pegawai berhasil dibuat.');
+  } catch (e) {
+    return err(e);
+  }
 }
-export function createUser(user: User, f: { name: string; email: string; role: RoleKey; pw: string }): ActionResult {
-  try { return ok(svc.createUser(user, f)); } catch (e) { return err(e); }
-}
-export function decideAccess(user: User, id: string, approved: boolean, role?: RoleKey): ActionResult {
-  try { return ok(svc.decideAccess(user, id, approved, role)); } catch (e) { return err(e); }
+export function decideAccess(user: User, id: string, approved: boolean): ActionResult {
+  try { return ok(svc.decideAccess(user, id, approved)); } catch (e) { return err(e); }
 }
 
 /* ── Audit ── */

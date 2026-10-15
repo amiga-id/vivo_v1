@@ -1,13 +1,14 @@
 """
 AMIGA Backend – FastAPI
+Legacy chatbot API; the database-backed application API is in app.main.
 Provides:
   POST /api/chat   – in-app chatbot (Amazon Bedrock Claude)
   GET  /api/health – health check
 
 Telegram bot runs as a background task via python-telegram-bot.
 
-Run:
-  uvicorn main:app --reload --port 8000
+Run the application API from the repository root:
+  uv run --directory backend fastapi dev --port 8001
 """
 import os
 import json

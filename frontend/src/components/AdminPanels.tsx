@@ -11,14 +11,11 @@ export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
   const { user }         = useSession();
   const toast            = useToast();
   const [pending, start] = useBusy();
-  const [roles, setRoles] = useState<Record<string, RoleKey>>({});
 
   const act = (id: string, ok: boolean) =>
     start(async () => {
       if (!user) return;
-      const req = requests.find(r => r.id === id);
-      const role = req?.type === 'register' ? (roles[id] ?? req?.uid as any) : undefined;
-      const r = api.decideAccess(user, id, ok, role);
+      const r = api.decideAccess(user, id, ok);
       toast(r.msg, !r.ok);
     });
 
@@ -28,10 +25,9 @@ export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
         <div className="kpi warn"><b>{requests.length}</b><span>Permintaan akses menunggu</span></div>
       </div>
       <section className="card">
-        <h2>Pendaftaran dan permintaan akses</h2>
+        <h2>Permintaan akses</h2>
         <p className="sub">
-          Pendaftaran pegawai baru menunggu persetujuan Anda di sini.
-          Tetapkan peran akhir sebelum menyetujui.
+          Tinjau permintaan akses pegawai. Akun baru dibuat melalui form Buat akun pegawai.
           Setiap keputusan dicatat di riwayat audit.
         </p>
         {requests.length === 0
@@ -45,16 +41,6 @@ export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
                     <div className="m">{x.id}, diajukan {x.date}</div>
                   </div>
                   <div className="actions" style={{ margin: 0 }}>
-                    {x.type === 'register' && (
-                      <select className="inline"
-                        value={roles[x.id] ?? 'support'}
-                        onChange={e => setRoles(prev => ({ ...prev, [x.id]: e.target.value as RoleKey }))}
-                        aria-label="Peran akhir">
-                        {(Object.keys(ROLE_LABEL) as RoleKey[]).map(k => (
-                          <option key={k} value={k}>{ROLE_LABEL[k]}</option>
-                        ))}
-                      </select>
-                    )}
                     <button className="btn sm primary" disabled={pending} onClick={() => act(x.id, true)}>
                       Setujui
                     </button>
@@ -71,7 +57,15 @@ export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
   );
 }
 
-export function AdminUsersList({ me, users }: { me: string; users: User[] }) {
+export function AdminUsersList({
+  me,
+  users,
+  onRoleUpdated,
+}: {
+  me: string;
+  users: User[];
+  onRoleUpdated: () => Promise<void>;
+}) {
   const { user: currentUser } = useSession();
   const toast                 = useToast();
   const [pending, start]      = useBusy();
@@ -80,8 +74,7 @@ export function AdminUsersList({ me, users }: { me: string; users: User[] }) {
     <section className="card">
       <h2>Akun pegawai</h2>
       <p className="sub">
-        Perubahan peran berlaku saat pengguna memuat halaman berikutnya.
-        Akun berstatus Menunggu belum bisa masuk.
+        Akun dibuat dan dikelola oleh System Admin. Perubahan peran berlaku saat pengguna memuat halaman berikutnya.
       </p>
       <div className="tblw">
         <table className="tbl">
@@ -100,8 +93,9 @@ export function AdminUsersList({ me, users }: { me: string; users: User[] }) {
                     aria-label={`Peran ${u.name}`}
                     onChange={e => start(async () => {
                       if (!currentUser) return;
-                      const r = api.setRole(currentUser, u.id, e.target.value as RoleKey);
+                      const r = await api.setRole(currentUser, u.id, e.target.value as RoleKey);
                       toast(r.msg, !r.ok);
+                      if (r.ok) await onRoleUpdated();
                     })}>
                     {(Object.keys(ROLE_LABEL) as RoleKey[]).map(k => (
                       <option key={k} value={k}>{ROLE_LABEL[k]}</option>
@@ -117,7 +111,7 @@ export function AdminUsersList({ me, users }: { me: string; users: User[] }) {
   );
 }
 
-export function AdminCreateUser() {
+export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> }) {
   const { user: currentUser } = useSession();
   const toast                 = useToast();
   const [pending, start]      = useBusy();
@@ -126,18 +120,19 @@ export function AdminCreateUser() {
 
   const submit = () => start(async () => {
     if (!currentUser) return;
-    const r = api.createUser(currentUser, f);
+    const r = await api.createUser(currentUser, f);
     toast(r.msg, !r.ok);
-    if (r.ok) setF({ name: '', email: '', role: 'support', pw: '' });
+    if (r.ok) {
+      setF({ name: '', email: '', role: 'support', pw: '' });
+      await onCreated();
+    }
   });
 
   return (
     <section className="card">
       <h2>Buat akun pegawai</h2>
       <p className="sub">
-        Pegawai juga bisa mendaftar sendiri lewat halaman masuk.
-        Pendaftaran baru aktif setelah Anda setujui.
-        Gunakan form ini untuk membuat akun langsung.
+        Buat akun pegawai dan tetapkan perannya. Sampaikan kata sandi awal dengan aman kepada pegawai.
       </p>
       <div className="form">
         <label>

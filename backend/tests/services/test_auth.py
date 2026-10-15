@@ -6,6 +6,7 @@ from pytest import (
     raises,
 )
 
+from app.core.config import settings
 from app.models.account import Account, AccountRole
 from app.schemas.auth import AccountFilterRequest, AccountUpdateRequest
 from app.schemas.response import PagedRequest
@@ -14,6 +15,8 @@ from app.services.auth import (
     create_account,
     filter_accounts,
     find_account,
+    from_account,
+    hash_password,
     login_account,
     remove_account,
     update_account,
@@ -76,6 +79,34 @@ async def test_filter_account(db_session):
 
     assert data is not None
     assert total is not None
+
+
+async def test_configured_system_email_is_admin_and_hidden_from_account_list(
+    db_session, monkeypatch
+):
+    email = "configured-superadmin@example.com"
+    monkeypatch.setattr(settings, "APP_SYSTEM_USER_EMAIL", email)
+    [before, before_total] = await filter_accounts(db_session, None)
+    account = Account(
+        name="Configured Superadmin",
+        email=email,
+        password_hash=hash_password("12345678"),
+        role=AccountRole.REVIEWER,
+    )
+    db_session.add(account)
+    await db_session.commit()
+
+    try:
+        [accounts, total] = await filter_accounts(db_session, None)
+
+        assert account.is_admin
+        assert from_account(account).role == AccountRole.SYSTEM
+        assert email not in {entry.email for entry in accounts}
+        assert total == before_total
+        assert before is not None
+    finally:
+        await db_session.delete(account)
+        await db_session.commit()
 
 
 async def test_filter_account_with_query(db_session):

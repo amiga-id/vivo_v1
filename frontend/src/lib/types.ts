@@ -88,7 +88,7 @@ export interface WorkloadRow {
 }
 
 export interface AccessRequest {
-  id: string; type: 'reset' | 'register'; uid?: string;
+  id: string; type: 'reset';
   by: string; text: string; date: string;
 }
 
@@ -112,6 +112,17 @@ export interface VoucherData {
 }
 
 export interface ClientSummary { name: string; code: string; docs: number; assignees: string[]; }
+
+export interface Vendor {
+  id: string;
+  name: string;
+  pic: string;
+  email: string;
+  phone_number?: string | null;
+  address?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
 
 export interface TaxDoc {
   id: string; no: string; klien: string; vendor: string;

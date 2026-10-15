@@ -152,7 +152,6 @@ function seed(): Store {
     { id: 'hana',  name: 'Hana Putri',     role: 'finance', about: 'Memeriksa dan menyetujui dokumen.',                                       email: 'hana@amiga.demo',  status: 'Aktif'    },
     { id: 'bayu',  name: 'Bayu Kurniawan', role: 'lead',    about: 'Memantau beban kerja tim, alihkan tugas, atur penugasan klien.',           email: 'bayu@amiga.demo',  status: 'Aktif'    },
     { id: 'sari',  name: 'Sari Anggraini', role: 'admin',   about: 'Mengelola akun, hak akses, dan klien.',                                   email: 'sari@amiga.demo',  status: 'Aktif'    },
-    { id: 'maya',  name: 'Maya Sartika',   role: 'support', about: 'Pendaftar baru, menunggu persetujuan.',                                    email: 'maya@amiga.demo',  status: 'Menunggu' },
   ];
 
   // Initial client assignments by Lead
@@ -171,7 +170,6 @@ function seed(): Store {
     klienCounters:    { 'PT Maju Jaya': 7,     'CV Sinar Abadi': 3,    'Koperasi Sejahtera': 12,   'UD Berkah Tani': 0,    'PT Karya Nusa': 4    },
     requests: [
       { id: 'R-3', type: 'reset',    by: 'hana', text: 'Hana meminta atur ulang akses masuk akun.', date: todayISO() },
-      { id: 'R-4', type: 'register', uid: 'maya', by: 'maya', text: 'Maya Sartika mendaftar sebagai pegawai (Intake Support).', date: todayISO() },
     ],
     events,
     seq:      1046,

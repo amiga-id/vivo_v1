@@ -76,7 +76,13 @@ def create_access_token(
     """Create a signed JWT containing the user's id and email."""
 
     exp = datetime.now(UTC) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
-    payload = {"sub": from_uuid(id), "email": email, "role": role, "exp": exp}
+    payload = {
+        "sub": from_uuid(id),
+        "email": email,
+        "role": role,
+        "iat": datetime.now(UTC),
+        "exp": exp,
+    }
 
     access_token = encode(
         payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
@@ -94,7 +100,7 @@ def from_account(entry: Account) -> AccountResponse:
     return AccountResponse(
         id=from_uuid(entry.id),
         name=entry.name,
-        role=entry.role,
+        role=AccountRole.SYSTEM if entry.is_system else entry.role,
         email=entry.email,
         email_verified=entry.email_verified,
         phone_number=entry.phone_number,
@@ -174,10 +180,11 @@ async def login_account(
 
 async def logout_account(
     session: Annotated[AsyncSession, Depends(get_db)], id: UUID
-) -> AuthToken:
+) -> None:
     await session.execute(
         update(Account).where(Account.id == id).values(last_logout=datetime.now(UTC))
     )
+    await session.commit()
 
 
 async def current_account(
@@ -205,6 +212,16 @@ async def current_account(
     if account is None:
         raise AuthenticationError("Invalid or expired token")
 
+    issued_at = payload.get("iat")
+    last_logout = account.last_logout
+    if issued_at is None:
+        raise AuthenticationError("Invalid or expired token")
+    if last_logout is not None:
+        if last_logout.tzinfo is None:
+            last_logout = last_logout.replace(tzinfo=UTC)
+        if datetime.fromtimestamp(issued_at, UTC) <= last_logout:
+            raise AuthenticationError("Invalid or expired token")
+
     return account
 
 
@@ -212,7 +229,14 @@ async def filter_accounts(
     session: Annotated[AsyncSession, Depends(get_db)],
     filter: PagedRequest[AccountFilterRequest] | None = None,
 ) -> tuple[list[AccountResponse], int]:
-    query = select(Account).order_by(desc(Account.created_at))
+    query = (
+        select(Account)
+        .where(
+            Account.role != AccountRole.SYSTEM,
+            func.lower(Account.email) != str(settings.APP_SYSTEM_USER_EMAIL).lower(),
+        )
+        .order_by(desc(Account.created_at))
+    )
     if filter and filter.query:
         query = query.where(
             or_(
@@ -253,11 +277,16 @@ async def update_account(
     if entry is None:
         return [True, None]
 
-    if entry.role == AccountRole.SYSTEM:
+    if entry.is_system:
         return [False, entry]
 
     update = updates.model_dump(exclude_unset=True)
     for key, value in update.items():
+        if key == "role" and value is None:
+            continue
+        if key == "role" and value is not None:
+            value = AccountRole(value)
+
         if key == "phone_number" and value != getattr(entry, key):
             entry.phone_verified = False
 
@@ -266,10 +295,10 @@ async def update_account(
 
         setattr(entry, key, value)
 
-    session.commit()
-    session.refresh(entry)
+    await session.commit()
+    await session.refresh(entry)
 
-    return [True, from_account(entry)]
+    return True, from_account(entry)
 
 
 async def remove_account(
@@ -281,7 +310,7 @@ async def remove_account(
     if entry is None:
         return [True, None]
 
-    if entry.role == AccountRole.SYSTEM:
+    if entry.is_system:
         return [False, entry]
 
     session.delete(entry)

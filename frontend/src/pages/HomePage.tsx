@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import LoginForm from '@/components/LoginForm';
 import Icon from '@/components/Icon';
 import { Brand } from '@/components/ui';
-import { ROLE_LABEL } from '@/lib/constants';
 import { useSession, homeOf } from '@/lib/session';
-import { store } from '@/lib/store';
 
 export default function HomePage() {
-  const { user, loading } = useSession();
+  const { user, loading, error } = useSession();
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -19,15 +17,16 @@ export default function HomePage() {
   }, [user, loading, navigate]);
 
   if (loading) return <div className="loading">Loading...</div>;
-
-  // Build demo accounts from store
-  const demoMode = (import.meta.env.VITE_DEMO_MODE as string | undefined) ?? 'on';
-  const demo = demoMode !== 'off' ? {
-    password: (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? 'amiga2026',
-    accounts: store.users
-      .filter(u => u.status === 'Aktif')
-      .map(u => ({ name: u.name, role: ROLE_LABEL[u.role], email: u.email })),
-  } : null;
+  if (error) {
+    return (
+      <div className="auth">
+        <section className="auth-panel">
+          <div className="auth-err" role="alert">{error}</div>
+          <button className="btn" onClick={() => window.location.reload()}>Coba lagi</button>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="auth">
@@ -55,7 +54,7 @@ export default function HomePage() {
         </ul>
       </section>
       <section className="auth-panel">
-        <LoginForm demo={demo} />
+        <LoginForm />
       </section>
     </div>
   );

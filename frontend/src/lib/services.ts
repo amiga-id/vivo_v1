@@ -71,9 +71,15 @@ function issueVoucherNo(klien: string): string {
 
 /* ── Queue ── */
 export function queueFor(u: User): DocSummary[] {
-  guard(u, 'queue:read:own');
+  const queuePermission = u.role === 'finance'
+    ? 'queue:read:assigned'
+    : 'queue:read:own';
+  const documentPermission = u.role === 'finance'
+    ? 'doc:read:assigned'
+    : 'doc:read:own';
+  guard(u, queuePermission);
   return store.docs
-    .filter(d => can(u, 'doc:read:own', d).ok)
+    .filter(d => can(u, documentPermission, d).ok)
     .map(summary);
 }
 
@@ -437,28 +443,6 @@ export function setRole(u: User, uid: string, role: RoleKey): string {
   return `Peran ${t.name} diperbarui.`;
 }
 
-export function register(f: { name: string; email: string; role: RoleKey; pw: string; pw2: string }): string {
-  const name  = f.name.trim().slice(0, 60);
-  const email = f.email.trim().toLowerCase();
-  const pw    = f.pw ?? '';
-  if (name.length < 3) throw new Rule('Isi nama lengkap (minimal 3 huruf).');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Rule('Format email tidak valid.');
-  if (store.users.some(x => x.email === email)) throw new Rule('Email sudah terdaftar.');
-  if (pw.length < 8) throw new Rule('Kata sandi minimal 8 karakter.');
-  if (pw !== f.pw2) throw new Rule('Konfirmasi kata sandi tidak sama.');
-  const id = `u${Date.now()}`;
-  store.users.push({ id, name, role: f.role, about: 'Pendaftar baru.', email, status: 'Menunggu' });
-  store.creds.push({ id, email, pw });
-  const reqId = `R-${++store.reqSeq}`;
-  store.requests.push({
-    id: reqId, type: 'register', uid: id, by: id,
-    text: `${name} mendaftar sebagai ${ROLE_LABEL[f.role]}.`, date: todayISO(),
-  });
-  store.events.push({ k: 'admin', d: '', t: stamp(), a: `${name} (pendaftar)`,
-    w: 'Pendaftaran pegawai baru', x: `${email}. Menunggu persetujuan System Admin.` });
-  return email;
-}
-
 export function createUser(u: User, f: { name: string; email: string; role: RoleKey; pw: string }): string {
   guard(u, 'user:manage');
   const name  = f.name.trim().slice(0, 60);
@@ -476,22 +460,11 @@ export function createUser(u: User, f: { name: string; email: string; role: Role
   return `Akun ${name} dibuat.`;
 }
 
-export function decideAccess(u: User, id: string, ok: boolean, role?: RoleKey): string {
+export function decideAccess(u: User, id: string, ok: boolean): string {
   guard(u, 'access:decide');
   const i = store.requests.findIndex(r => r.id === id);
   if (i < 0) throw new Rule('Permintaan tidak ditemukan.');
   const req = store.requests[i];
-  if (req.type === 'register') {
-    const t = store.users.find(x => x.id === req.uid);
-    if (t) {
-      if (ok) { const rl = role ?? t.role; if (!ROLE_LABEL[rl]) throw new Rule('Peran tidak valid.'); t.role = rl; t.status = 'Aktif'; }
-      else t.status = 'Ditolak';
-      store.requests.splice(i, 1);
-      ev('admin', '', ok ? 'Pendaftaran disetujui' : 'Pendaftaran ditolak',
-        t.name + (ok ? ` aktif sebagai ${ROLE_LABEL[t.role]}.` : '.'), rLabel(u));
-    }
-    return ok ? 'Pendaftaran disetujui.' : 'Pendaftaran ditolak.';
-  }
   store.requests.splice(i, 1);
   ev('admin', '', ok ? 'Permintaan disetujui' : 'Permintaan ditolak', req.text, rLabel(u));
   return ok ? 'Permintaan disetujui.' : 'Permintaan ditolak.';
@@ -543,6 +516,6 @@ export function authenticate(email: string, pw: string): { ok: true; user: User 
   const user = store.users.find(u => u.id === cred.id);
   if (!user)                    return { ok: false, msg: 'Akun tidak ditemukan.' };
   if (user.status === 'Menunggu') return { ok: false, msg: 'Akun masih menunggu persetujuan System Admin.' };
-  if (user.status === 'Ditolak')  return { ok: false, msg: 'Pendaftaran ditolak. Hubungi System Admin.' };
+  if (user.status === 'Ditolak')  return { ok: false, msg: 'Akses akun ditolak. Hubungi System Admin.' };
   return { ok: true, user };
 }

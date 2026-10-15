@@ -86,6 +86,15 @@ input:disabled{opacity:.6}
 
 .queue{display:grid;gap:10px}
 .q{display:grid;grid-template-columns:1.7fr 1.2fr 1fr 1fr 1.1fr auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:var(--r-md);padding:12px 16px}
+.support-submissions-table{min-width:620px}
+.support-submissions-table th:first-child{width:34%}
+.support-submissions-table th:nth-child(2){width:28%}
+.support-submissions-table th:nth-child(3){width:22%}
+.support-submissions-table th:last-child{width:16%}
+.support-submission-action-heading,.support-submission-action-cell{text-align:center!important}
+.support-submission-action{width:max-content;padding:.35em .8em;font-size:13px;line-height:1.2}
+.revision-history{margin-top:18px}
+.revision-history-table{min-width:680px}
 .q:hover{border-color:var(--pink)}
 .q .t{font-weight:600}
 .q .issue{font-size:13px;color:var(--err);display:flex;gap:6px;align-items:flex-start}
@@ -94,8 +103,12 @@ input:disabled{opacity:.6}
 .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .badge.s-Perlu,.badge.s-Ditolak,.badge.s-Konflik{background:var(--err-soft);color:var(--err)}
 .badge.s-Diproses,.badge.s-Menunggu{background:var(--warn-soft);color:var(--warn)}
+.badge.s-Dalam-Review{background:var(--teal-soft);color:var(--teal-deep)}
 .badge.s-Disetujui,.badge.s-Aktif{background:var(--ok-soft);color:var(--ok)}
-.badge.s-Dicabut{background:var(--err-soft);color:var(--err)}
+.badge.s-Dicabut,.badge.s-Dikembalikan{background:var(--err-soft);color:var(--err)}
+.badge.s-done{background:var(--ok-soft);color:var(--ok)}
+.badge.s-waiting,.badge.s-uploading,.badge.s-extracting{background:var(--warn-soft);color:var(--warn)}
+.badge.s-failed,.badge.s-rejected{background:var(--err-soft);color:var(--err)}
 .due.late{color:var(--err);font-weight:600} .due.today{color:var(--warn);font-weight:600} .due{font-size:13.5px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-deep);padding:8px 18px;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){background:var(--teal-soft)}
@@ -126,6 +139,15 @@ input:disabled{opacity:.6}
 .delegate{display:flex;gap:8px;align-items:center;background:var(--teal-soft);color:var(--teal-deep);border-radius:var(--r-sm);padding:8px 12px;font-size:13.5px}
 
 .split{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.finance-review-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.finance-review-preview,.finance-review-extraction{min-width:0}
+.finance-review-pdf{height: min(72vh, 760px);min-height:520px;margin-bottom:10px}
+.review-invoice{min-width:0;border:1px solid var(--line);border-radius:var(--r-md);padding:12px;margin:0 0 12px}
+.review-invoice legend{padding:0 6px;font-weight:600}
+.review-invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.review-invoice-fields label{display:grid;gap:5px;font-size:13px;font-weight:600}
+.review-invoice-fields input{min-width:0;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:9px 10px}
+.review-invoice-fields input:focus{outline:2px solid var(--teal);outline-offset:1px}
 .pane-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .pane-h h2{margin:0}
 .paper{background:#fff;color:#2b2b2b;border:1px solid #e4d6dd;border-radius:6px;padding:26px 26px 22px;box-shadow:0 14px 34px -22px rgba(0,0,0,.45);font-size:13.5px;position:relative}
@@ -195,10 +217,11 @@ input:disabled{opacity:.6}
 .toast.bad{background:var(--err)}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
-@media (max-width:900px){.split{grid-template-columns:1fr}.q{grid-template-columns:1fr 1fr;gap:8px 14px}.q>:last-child{grid-column:1/-1}}
-@media (max-width:560px){.form{grid-template-columns:1fr}.top-in{padding:10px 14px}.hero,.login-hero{padding-left:14px;padding-right:14px}main{padding:0 14px 48px}.q{grid-template-columns:1fr}.voucher .paper{padding:22px 18px}}
+@media (max-width:900px){.split,.finance-review-split{grid-template-columns:1fr}.q{grid-template-columns:1fr 1fr;gap:8px 14px}.q>:last-child{grid-column:1/-1}}
+@media (max-width:560px){.form{grid-template-columns:1fr}.top-in{padding:10px 14px}.hero,.login-hero{padding-left:14px;padding-right:14px}main{padding:0 14px 48px}.q{grid-template-columns:1fr}.q.support-submission-row{grid-template-columns:minmax(0,1fr)}.voucher .paper{padding:22px 18px}}
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.workspace-footer{max-width:1140px;margin:0 auto;padding:0 20px 24px;color:var(--muted);font-size:13px;text-align:center}
 .pdfframe{width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:#fff}
 a.btn{text-decoration:none}
 .q a.btn{text-decoration:none}
@@ -241,12 +264,6 @@ a.btn{text-decoration:none}
 /* loading spinner */
 .loading{display:flex;align-items:center;justify-content:center;min-height:120px;color:var(--muted);font-size:14px}
 
-/* auth tabs (Masuk / Daftar) */
-.authtabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:22px}
-.authtabs button{border:0;background:transparent;padding:9px 12px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--muted)}
-.authtabs button:hover{color:var(--ink)}
-.authtabs button[aria-selected="true"]{background:var(--teal);color:var(--on-teal)}
-.auth-ok{display:flex;gap:8px;align-items:flex-start;background:var(--ok-soft);color:var(--ok);border-radius:var(--r-sm);padding:10px 12px;font-size:14px;margin-bottom:16px}
 .auth-card select{padding:11px 13px}
 
 /* tax-setup screen */
@@ -295,9 +312,6 @@ a.btn{text-decoration:none}
 .vpaper .vs-role{margin-top:6px;color:#222;padding-left:6px}
 .vpaper .vs-name{font-size:12px;color:#666;padding-left:6px;margin-top:2px}
 .vpaper .vs-note{margin:20px 0 0;font-size:11.5px;color:#7a3550}
-
-/* status badges – Dikembalikan */
-.badge.s-Dikembalikan{background:var(--err-soft);color:var(--err)}
 
 @media (max-width:640px){
   .taxrow{grid-template-columns:1fr auto}

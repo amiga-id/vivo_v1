@@ -57,7 +57,7 @@ export default function QueueClient({ rows, role }: { rows: DocSummary[]; role: 
                   ? <Link className="btn sm pink" to={`/support/fix/${d.id}`}>Perbaiki</Link>
                   : d.status === 'Disetujui'
                     ? <Link className="btn sm" to="/support/voucher">Lihat voucher</Link>
-                    : <Link className="btn sm" to={`/support/audit?doc=${d.id}`}>Lacak</Link>}
+                    : null}
               </div>
             </div>
           ))}
