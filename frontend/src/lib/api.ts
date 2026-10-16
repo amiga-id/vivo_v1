@@ -104,13 +104,7 @@ export async function setRole(_user: User, uid: string, role: RoleKey): Promise<
 }
 export async function createUser(
   _user: User,
-  f: {
-    name: string;
-    email: string;
-    role: RoleKey;
-    pw: string;
-    signature?: File | null;
-  },
+  f: { name: string; email: string; role: RoleKey; pw: string },
 ): Promise<ActionResult> {
   try {
     await createDatabaseAccount({
@@ -118,7 +112,6 @@ export async function createUser(
       email: f.email,
       role: f.role,
       password: f.pw,
-      signature: f.signature,
     });
     return ok('Akun pegawai berhasil dibuat.');
   } catch (e) {

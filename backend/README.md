@@ -73,18 +73,15 @@ Support, Finance, Lead, and Admin audit screens use the shared database-backed
 `GET /api/v1/audit/events` endpoint, with results scoped to the authenticated role.
 The System Admin dashboard summary is served from database aggregates by
 `GET /api/v1/admin/dashboard`.
-Approved submissions are listed at `GET /api/v1/documents/vouchers`. Admin can
-create Support, Finance, Lead, and Admin accounts with an optional PNG/JPEG
-signature using `POST /api/v1/auth/accounts/create-with-signature`; Finance
-accounts require a signature. Signature images are stored in S3, while signer
-metadata and S3 keys are stored in the database. An existing Finance account can
-replace its own signature with
-`POST /api/v1/documents/signatures/finance`. Approving a submission associates
-the reviewer's registered Finance signature with that submission, and voucher
-generation applies it automatically without asking Finance to select a signature
-again. The BOD signature area is left blank for the BOD to sign manually; the
-application stores signatures submitted during account creation for all supported
-employee roles, while automatic voucher signing remains limited to Finance.
+Approved submissions are listed at `GET /api/v1/documents/vouchers`. Admin creates
+Support, Finance, Lead, and Admin accounts using `POST /api/v1/auth/accounts/create`.
+Finance users register or replace their own PNG/JPEG signature from the Finance
+page using `POST /api/v1/documents/signatures/finance`. Signature images are stored
+in S3, while signer metadata and S3 keys are stored in the database. Approving a
+submission associates the reviewer's registered Finance signature with that
+submission, and voucher generation applies it automatically. The BOD signature
+area is left blank for the BOD to sign manually; the application does not register
+Admin or BOD signatures.
 Vouchers are generated or refreshed with
 `POST /api/v1/documents/submissions/{submission_id}/voucher`. Source invoice PDFs
 are appended after the generated voucher page and voucher and Finance signature

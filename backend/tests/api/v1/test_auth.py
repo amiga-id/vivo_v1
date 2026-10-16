@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock
 
 from httpx import (
     AsyncClient,
@@ -46,9 +45,8 @@ async def test_admin_can_create_account(
     assert response.json()["data"]["email"] == "newton@example.com"
 
 
-async def test_admin_cannot_create_finance_account_without_signature(
-    client: AsyncClient,
-    admin_user: Account,
+async def test_admin_can_create_finance_account_without_signature(
+    client: AsyncClient, admin_user: Account
 ):
     token = create_access_token(admin_user.id, admin_user.email, admin_user.role)
 
@@ -63,72 +61,9 @@ async def test_admin_cannot_create_finance_account_without_signature(
         },
     )
 
-    assert response.status_code == 422
-
-
-async def test_admin_can_create_finance_account_with_signature(
-    client: AsyncClient,
-    admin_user: Account,
-    monkeypatch,
-):
-    token = create_access_token(admin_user.id, admin_user.email, admin_user.role)
-    register_signature = AsyncMock()
-    monkeypatch.setattr(
-        "app.api.v1.auth.register_voucher_signature",
-        register_signature,
-    )
-
-    response = await client.post(
-        "/api/v1/auth/accounts/create-with-signature",
-        headers={"Authorization": token.authorization},
-        data={
-            "name": "Finance Reviewer",
-            "email": "finance-reviewer@example.com",
-            "password": "12345678",
-            "role": "reviewer",
-        },
-        files={"file": ("signature.png", b"signature-image", "image/png")},
-    )
-
     assert response.status_code == 201
     assert response.json()["data"]["email"] == "finance-reviewer@example.com"
     assert response.json()["data"]["role"] == "reviewer"
-    register_signature.assert_awaited_once()
-    assert register_signature.await_args.args[1].email == "finance-reviewer@example.com"
-    assert register_signature.await_args.kwargs["created_by"] == admin_user
-
-
-@mark.parametrize("role", ["support", "reviewer", "lead", "admin"])
-async def test_admin_can_create_any_role_with_signature(
-    client: AsyncClient,
-    admin_user: Account,
-    monkeypatch,
-    role: str,
-):
-    token = create_access_token(admin_user.id, admin_user.email, admin_user.role)
-    register_signature = AsyncMock()
-    monkeypatch.setattr(
-        "app.api.v1.auth.register_voucher_signature",
-        register_signature,
-    )
-    email = f"{role}-signature@example.com"
-
-    response = await client.post(
-        "/api/v1/auth/accounts/create-with-signature",
-        headers={"Authorization": token.authorization},
-        data={
-            "name": f"{role.title()} Account",
-            "email": email,
-            "password": "12345678",
-            "role": role,
-        },
-        files={"file": ("signature.png", b"signature-image", "image/png")},
-    )
-
-    assert response.status_code == 201
-    assert response.json()["data"]["email"] == email
-    assert register_signature.await_args.args[1].role.value == role
-    assert register_signature.await_args.kwargs["created_by"] == admin_user
 
 
 async def test_non_admin_cannot_create_account(

@@ -101,29 +101,8 @@ export async function createDatabaseAccount(input: {
   email: string;
   role: RoleKey;
   password: string;
-  signature?: File | null;
 }): Promise<User> {
   const role = input.role === 'finance' ? 'reviewer' : input.role;
-  if (input.role === 'finance' && !input.signature) {
-    throw new Error('Unggah tanda tangan Finance untuk membuat akun Finance.');
-  }
-  if (input.signature) {
-    const form = new FormData();
-    form.append('name', input.name);
-    form.append('email', input.email);
-    form.append('password', input.password);
-    form.append('role', role);
-    form.append('file', input.signature);
-    const result = await apiRequest<ApiEnvelope<AccountDto>>(
-      '/auth/accounts/create-with-signature',
-      {
-        method: 'POST',
-        body: form,
-      },
-    );
-    return toUser(result.data);
-  }
-
   const result = await apiRequest<ApiEnvelope<AccountDto>>('/auth/accounts/create', {
     method: 'POST',
     body: JSON.stringify({ ...input, role, password: input.password }),

@@ -226,7 +226,11 @@ async function apiData<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     const token = getAccessToken();
     const headers = new Headers(init?.headers);
-    if (init?.body && !headers.has('Content-Type')) {
+    if (
+      init?.body &&
+      !(typeof FormData !== 'undefined' && init.body instanceof FormData) &&
+      !headers.has('Content-Type')
+    ) {
       headers.set('Content-Type', 'application/json');
     }
     if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -320,6 +324,15 @@ export function getVouchers(): Promise<VoucherListItem[]> {
 
 export function getVoucherSigners(): Promise<VoucherSigners> {
   return apiData<VoucherSigners>('/documents/vouchers/signers');
+}
+
+export function uploadVoucherSignature(file: File): Promise<VoucherSigner> {
+  const body = new FormData();
+  body.append('file', file);
+  return apiData<VoucherSigner>('/documents/signatures/finance', {
+    method: 'POST',
+    body,
+  });
 }
 
 export function generateVoucher(submissionId: string): Promise<VoucherGenerateResult> {

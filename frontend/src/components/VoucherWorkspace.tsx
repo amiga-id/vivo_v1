@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   generateVoucher,
   getVoucherSigners,
   getVouchers,
+  uploadVoucherSignature,
 } from '@/lib/document-api';
 import type {
   VoucherListItem,
-  VoucherSigner,
   VoucherSigners,
 } from '@/lib/document-api';
 
@@ -27,8 +28,12 @@ export default function VoucherWorkspace({ role }: { role: WorkspaceRole }) {
   const [signers, setSigners] = useState<VoucherSigners | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [savingSignature, setSavingSignature] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [signatureError, setSignatureError] = useState('');
+  const [signatureNotice, setSignatureNotice] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +63,30 @@ export default function VoucherWorkspace({ role }: { role: WorkspaceRole }) {
 
   function chooseVoucher(id: string) {
     setSearchParams({ id });
+  }
+
+  async function saveSignature(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!signatureFile) {
+      setSignatureError('Pilih file tanda tangan PNG atau JPEG.');
+      return;
+    }
+
+    setSavingSignature(true);
+    setSignatureError('');
+    setSignatureNotice('');
+    try {
+      const signer = await uploadVoucherSignature(signatureFile);
+      setSigners({ finance: [signer] });
+      setSignatureFile(null);
+      setSignatureNotice('Tanda tangan Finance berhasil disimpan dan siap digunakan pada voucher.');
+      form.reset();
+    } catch (reason) {
+      setSignatureError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSavingSignature(false);
+    }
   }
 
   async function createVoucher() {
@@ -99,15 +128,50 @@ export default function VoucherWorkspace({ role }: { role: WorkspaceRole }) {
     <div className="voucher-workspace">
       {error && <p className="auth-err" role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
+      {role === 'finance' && (
+        <section className="card">
+          <h2>Tanda tangan Finance</h2>
+          <p className="sub">
+            Tanda tangan disimpan di S3 dan otomatis digunakan pada voucher yang Anda setujui.
+          </p>
+          {signers?.finance.length
+            ? <p role="status">Tanda tangan Finance sudah tersimpan.</p>
+            : <p>Tanda tangan Finance belum didaftarkan.</p>}
+          <form className="form" onSubmit={saveSignature}>
+            <label>
+              File tanda tangan <small className="m">(PNG/JPEG, maksimal 5 MiB)</small>
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={event => {
+                  setSignatureFile(event.target.files?.[0] ?? null);
+                  setSignatureError('');
+                }}
+              />
+            </label>
+            <div className="actions" style={{ alignItems: 'end' }}>
+              <button
+                className="btn primary"
+                type="submit"
+                disabled={savingSignature || !signatureFile}
+              >
+                {savingSignature ? 'Menyimpan...' : 'Simpan tanda tangan'}
+              </button>
+            </div>
+          </form>
+          {signatureError && <p className="auth-err" role="alert">{signatureError}</p>}
+          {signatureNotice && <p role="status">{signatureNotice}</p>}
+        </section>
+      )}
       {vouchers.length === 0 ? (
         <section className="card">
-          <h2>Belum ada voucher</h2>
-          <p>Voucher akan muncul setelah pengajuan disetujui oleh Finance.</p>
+          <h2>Voucher terbit</h2>
+          <p>Belum ada voucher yang disetujui.</p>
         </section>
       ) : (
         <div className="voucher-workspace-grid">
           <section className="card">
-            <h2>Voucher disetujui</h2>
+            <h2>Voucher terbit</h2>
             <div className="voucher-list">
               {vouchers.map(item => (
                 <button

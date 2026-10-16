@@ -3,13 +3,9 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
-    File,
-    Form,
     HTTPException,
-    UploadFile,
     status,
 )
-from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
@@ -42,7 +38,6 @@ from app.services.auth import (
     remove_account,
     update_account,
 )
-from app.services.voucher_workflow import register_voucher_signature
 
 router = APIRouter(tags=["Auth"], prefix="/auth")
 
@@ -96,15 +91,6 @@ async def create_account_by_admin(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only an administrator can create accounts.",
         )
-    if request.role == "reviewer":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=(
-                "Akun Finance harus dibuat bersama tanda tangan melalui "
-                "/auth/accounts/create-with-signature."
-            ),
-        )
-
     try:
         account = await create_account(
             session=session,
@@ -129,78 +115,6 @@ async def create_account_by_admin(
     )
     await session.commit()
     return ApiResponse(success=True, data=from_account(account))
-
-
-@router.post(
-    "/accounts/create-with-signature",
-    status_code=status.HTTP_201_CREATED,
-    response_model=ApiResponse[AccountResponse],
-    response_model_exclude_none=True,
-)
-async def create_finance_account_by_admin(
-    session: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[Account, Depends(current_account)],
-    name: Annotated[str, Form()],
-    email: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-    file: Annotated[UploadFile, File()],
-    role: Annotated[str, Form()] = "reviewer",
-):
-    if not current_user.is_admin:
-        await file.close()
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only an administrator can create accounts.",
-        )
-
-    try:
-        try:
-            request = AccountCreateRequest(
-                name=name,
-                email=email,
-                password=password,
-                role=role,
-            )
-        except ValidationError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=exc.errors(),
-            ) from exc
-
-        try:
-            account = await create_account(
-                session=session,
-                name=request.name,
-                email=request.email,
-                password=request.password,
-                role=AccountRole(request.role),
-            )
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-            ) from exc
-
-        record_audit_event(
-            session,
-            current_user,
-            entity_type="account",
-            entity_id=account.id,
-            entity_label=account.name,
-            action="Akun pegawai dibuat",
-            detail=f"{account.email} · {request.role}.",
-        )
-        await register_voucher_signature(
-            session,
-            account,
-            file.file,
-            created_by=current_user,
-        )
-        return ApiResponse(success=True, data=from_account(account))
-    except Exception:
-        await session.rollback()
-        raise
-    finally:
-        await file.close()
 
 
 @router.post(

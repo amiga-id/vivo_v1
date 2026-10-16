@@ -132,6 +132,7 @@ async def test_update_account(db_session, default_user):
     assert success
     assert data is not None
     assert data.name == "updated"
+    assert data.updated_at is not None
 
 
 async def test_update_account_phone_number(db_session, default_user):

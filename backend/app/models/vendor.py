@@ -1,5 +1,4 @@
 import uuid
-from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     UUID,
@@ -9,18 +8,10 @@ from sqlalchemy import (
     String,
     text,
 )
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.core.db import Base
-
-if TYPE_CHECKING:
-    # Make sure this path points exactly to your vendor module
-    from .account import Account
 
 
 class Vendor(Base):
@@ -44,8 +35,6 @@ class Vendor(Base):
     )
     updated_by = Column(UUID, nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-
-    account: Mapped["Account"] = relationship("Account", back_populates="vendors")  # noqa: F821, UP037
 
     @property
     def updated_at_iso(self):

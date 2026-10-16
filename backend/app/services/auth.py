@@ -302,6 +302,7 @@ async def update_account(
         setattr(entry, key, value)
 
     await session.flush()
+    await session.refresh(entry, attribute_names=["updated_at"])
 
     return True, from_account(entry)
 

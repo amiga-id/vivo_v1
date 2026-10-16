@@ -136,22 +136,14 @@ export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> 
   const toast                 = useToast();
   const [pending, start]      = useBusy();
   const [f, setF] = useState({ name: '', email: '', role: 'support' as RoleKey, pw: '' });
-  const [signature, setSignature] = useState<File | null>(null);
-  const [signatureError, setSignatureError] = useState('');
   const set = (k: keyof typeof f, v: string) => setF(prev => ({ ...prev, [k]: v }));
 
   const submit = () => start(async () => {
     if (!currentUser) return;
-    if (f.role === 'finance' && !signature) {
-      setSignatureError('Unggah tanda tangan Finance untuk membuat akun Finance.');
-      return;
-    }
-    setSignatureError('');
-    const r = await api.createUser(currentUser, { ...f, signature });
+    const r = await api.createUser(currentUser, f);
     toast(r.msg, !r.ok);
     if (r.ok) {
       setF({ name: '', email: '', role: 'support', pw: '' });
-      setSignature(null);
       await onCreated();
     }
   });
@@ -160,9 +152,8 @@ export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> 
     <section className="card">
       <h2>Buat akun pegawai</h2>
       <p className="sub">
-        Buat akun pegawai dan tetapkan perannya. Akun Finance juga memerlukan tanda tangan
-        Finance yang disimpan di S3 dengan referensinya di database. Sampaikan kata sandi
-        awal dengan aman kepada pegawai.
+        Buat akun pegawai dan tetapkan perannya. Sampaikan kata sandi awal dengan aman
+        kepada pegawai. Finance dapat mendaftarkan tanda tangannya sendiri dari halaman Finance.
       </p>
       <div className="form">
         <label>
@@ -178,28 +169,11 @@ export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> 
         </label>
         <label>
           Peran
-          <select value={f.role} onChange={e => {
-            set('role', e.target.value);
-            setSignature(null);
-            setSignatureError('');
-          }}>
+          <select value={f.role} onChange={e => set('role', e.target.value)}>
             {(Object.keys(ROLE_LABEL) as RoleKey[]).map(k => (
               <option key={k} value={k}>{ROLE_LABEL[k]}</option>
             ))}
           </select>
-        </label>
-        <label>
-          Tanda tangan <small className="m">(wajib untuk Finance; opsional untuk role lain, PNG/JPEG, maksimal 5 MiB)</small>
-          <input
-              key={f.role}
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={e => {
-                setSignature(e.target.files?.[0] ?? null);
-                setSignatureError('');
-              }}
-            />
-            {signatureError && <small className="auth-err" role="alert">{signatureError}</small>}
         </label>
         <label>
           Kata sandi awal <small className="m">(minimal 8 karakter)</small>

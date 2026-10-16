@@ -321,25 +321,16 @@ async def register_voucher_signature(
     session: AsyncSession,
     user: Account,
     file: BinaryIO,
-    created_by: Account | None = None,
 ) -> VoucherSignatureResponse:
-    role_by_account_role = {
-        AccountRole.SUPPORT: "support",
-        AccountRole.REVIEWER: "finance",
-        AccountRole.LEAD: "lead",
-        AccountRole.ADMIN: "admin",
-        AccountRole.SYSTEM: "admin",
-    }
-    role = role_by_account_role.get(user.role)
-    if role is None:
+    if user.role != AccountRole.REVIEWER:
         raise HTTPException(
             status_code=403,
-            detail="Role akun tidak dapat mendaftarkan tanda tangan.",
+            detail="Tanda tangan hanya dapat didaftarkan oleh akun Finance.",
         )
     account_id = user.id
 
     image_bytes, extension, content_type = _signature_format(file)
-    signer_role: SignerRole = role
+    signer_role: SignerRole = "finance"
     existing_query = select(VoucherSigner).where(
         VoucherSigner.role == signer_role,
     )
@@ -361,7 +352,7 @@ async def register_voucher_signature(
             old_key = existing.s3_key
             existing.s3_key = key
             existing.content_type = content_type
-            existing.created_by = (created_by or user).id
+            existing.created_by = user.id
             existing.is_active = True
             signer = existing
         else:
@@ -372,7 +363,7 @@ async def register_voucher_signature(
                 account_id=account_id,
                 s3_key=key,
                 content_type=content_type,
-                created_by=(created_by or user).id,
+                created_by=user.id,
             )
             session.add(signer)
         await session.commit()

@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SignerRole = Literal["support", "finance", "lead", "admin"]
+SignerRole = Literal["finance"]
 
 class VoucherSignatureSelection(BaseModel):
     finance: str | None = None
