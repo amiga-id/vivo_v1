@@ -1,3 +1,4 @@
+import re
 from typing import Annotated
 
 from fastapi import (
@@ -35,6 +36,7 @@ from app.schemas.documents import (
     UploadedFileData,
 )
 from app.schemas.response import ApiResponse
+from app.services.audit import record_audit_event
 from app.services.auth import current_account
 from app.services.documents import (
     S3UploadError,
@@ -44,6 +46,7 @@ from app.services.documents import (
     retry_extraction,
     upload_pdf,
 )
+from app.services.voucher_workflow import save_approved_finance_signature
 
 router = APIRouter(tags=["Documents"])
 
@@ -63,7 +66,7 @@ async def list_clients(
             ClientAssignment,
             ClientAssignment.client_id == Client.id,
         ).where(ClientAssignment.support_id == current_user.id)
-    elif not current_user.is_admin:
+    elif not (current_user.is_admin or current_user.role == AccountRole.LEAD):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Anda tidak memiliki izin untuk melihat daftar klien.",
@@ -87,10 +90,13 @@ async def list_client_assignments(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[Account, Depends(current_account)],
 ):
-    if not current_user.is_admin:
+    if not (current_user.is_admin or current_user.role == AccountRole.LEAD):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Hanya System Admin yang dapat mengelola penugasan klien.",
+            detail=(
+                "Hanya Service Lead atau System Admin yang dapat "
+                "mengelola penugasan klien."
+            ),
         )
     rows = (
         await session.execute(
@@ -119,12 +125,22 @@ async def update_client_assignments(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[Account, Depends(current_account)],
 ):
-    if not current_user.is_admin:
+    if not (current_user.is_admin or current_user.role == AccountRole.LEAD):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Hanya System Admin yang dapat mengelola penugasan klien.",
+            detail=(
+                "Hanya Service Lead atau System Admin yang dapat "
+                "mengelola penugasan klien."
+            ),
         )
-    support = await session.get(Account, to_uuid(support_id))
+    try:
+        support_uuid = to_uuid(support_id)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID akun Intake Support tidak valid.",
+        ) from exc
+    support = await session.get(Account, support_uuid)
     if support is None or support.role != AccountRole.SUPPORT:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -173,6 +189,38 @@ async def update_client_assignments(
                 ClientAssignment.client_id.in_(client_ids),
                 ClientAssignment.support_id != support.id,
             )
+        )
+    changed_client_ids = previous_client_ids.symmetric_difference(set(client_ids))
+    if changed_client_ids:
+        changed_clients = (
+            await session.execute(
+                select(Client.id, Client.name).where(Client.id.in_(changed_client_ids))
+            )
+        ).all()
+        client_names = {client_id: name for client_id, name in changed_clients}
+        added_names = [
+            client_names[client_id]
+            for client_id in set(client_ids) - previous_client_ids
+            if client_id in client_names
+        ]
+        removed_names = [
+            client_names[client_id]
+            for client_id in previous_client_ids - set(client_ids)
+            if client_id in client_names
+        ]
+        details = []
+        if added_names:
+            details.append(f"Ditugaskan: {', '.join(added_names)}")
+        if removed_names:
+            details.append(f"Dilepas: {', '.join(removed_names)}")
+        record_audit_event(
+            session,
+            current_user,
+            entity_type="client_assignment",
+            entity_id=support.id,
+            entity_label=support.name,
+            action="Penugasan klien diperbarui",
+            detail="; ".join(details),
         )
     session.add_all(
         [
@@ -285,7 +333,27 @@ async def retry_document_extraction(
     try:
         result = await retry_extraction(session, entry)
     except RuntimeError as exc:
+        record_audit_event(
+            session,
+            current_user,
+            entity_type="upload",
+            entity_id=entry.id,
+            entity_label=entry.file_name,
+            action="Ekstraksi file dicoba ulang dan gagal",
+            detail=entry.extraction_error,
+        )
+        await session.commit()
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    record_audit_event(
+        session,
+        current_user,
+        entity_type="upload",
+        entity_id=entry.id,
+        entity_label=entry.file_name,
+        action="Ekstraksi file dicoba ulang",
+        detail=f"{result.invoice_count} invoice berhasil diekstrak.",
+    )
+    await session.commit()
     return ApiResponse(success=True, data=result)
 
 
@@ -328,7 +396,7 @@ async def list_submissions(
         query = query.where(Submission.uploader_id == current_user.id)
     elif current_user.role == AccountRole.REVIEWER:
         query = query.where(Submission.reviewer_id == current_user.id)
-    elif not current_user.is_admin:
+    elif not (current_user.is_admin or current_user.role == AccountRole.LEAD):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Anda tidak memiliki izin untuk melihat pengajuan.",
@@ -484,12 +552,30 @@ async def decide_submission(
             status_code=400,
             detail="Alasan wajib diisi untuk mengembalikan atau menolak pengajuan.",
         )
+    if request.decision == "approve":
+        await save_approved_finance_signature(session, submission, current_user)
     submission.status = {
         "approve": "Disetujui",
         "return": "Dikembalikan",
         "reject": "Ditolak",
     }[request.decision]
+    if request.decision == "approve":
+        request_suffix = re.sub(r"[^A-Za-z0-9]", "", submission.request_number)[-12:]
+        submission.voucher_number = f"VCH-{request_suffix.upper()}"
     submission.decision_reason = request.reason
+    record_audit_event(
+        session,
+        current_user,
+        entity_type="submission",
+        entity_id=submission.id,
+        entity_label=submission.request_number,
+        action={
+            "approve": "Pengajuan disetujui",
+            "return": "Pengajuan dikembalikan",
+            "reject": "Pengajuan ditolak",
+        }[request.decision],
+        detail=(request.reason or "").strip() or None,
+    )
     if request.decision == "return":
         session.add(
             RevisionHistory(
@@ -551,6 +637,15 @@ async def update_submission_invoices(
     submission.invoices = invoices
     submission.invoice_count = len(invoices)
     submission.grand_total = sum(invoice["total"] for invoice in invoices)
+    record_audit_event(
+        session,
+        current_user,
+        entity_type="submission",
+        entity_id=submission.id,
+        entity_label=submission.request_number,
+        action="Data invoice dikoreksi",
+        detail=f"{len(invoices)} invoice diperbarui oleh reviewer.",
+    )
     await session.commit()
     await session.refresh(submission)
     return ApiResponse(

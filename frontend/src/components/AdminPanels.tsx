@@ -6,11 +6,14 @@ import { Empty } from './ui';
 import { useToast } from './Toast';
 import { useBusy } from './useBusy';
 import { useSession } from '@/lib/session';
+import Pagination from './Pagination';
+import { usePagination } from '@/lib/pagination';
 
 export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
   const { user }         = useSession();
   const toast            = useToast();
   const [pending, start] = useBusy();
+  const pagination       = usePagination(requests);
 
   const act = (id: string, ok: boolean) =>
     start(async () => {
@@ -34,7 +37,7 @@ export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
           ? <Empty title="Tidak ada permintaan">Permintaan akses baru akan muncul di sini.</Empty>
           : (
             <div className="queue">
-              {requests.map(x => (
+              {pagination.pageItems.map(x => (
                 <div className="q" style={{ gridTemplateColumns: '1fr auto' }} key={x.id}>
                   <div>
                     <div className="t">{x.text}</div>
@@ -52,6 +55,14 @@ export function AdminRequests({ requests }: { requests: AccessRequest[] }) {
               ))}
             </div>
           )}
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          firstItem={pagination.firstItem}
+          lastItem={pagination.lastItem}
+          totalItems={requests.length}
+          onPageChange={pagination.setPage}
+        />
       </section>
     </>
   );
@@ -69,6 +80,7 @@ export function AdminUsersList({
   const { user: currentUser } = useSession();
   const toast                 = useToast();
   const [pending, start]      = useBusy();
+  const pagination            = usePagination(users);
 
   return (
     <section className="card">
@@ -82,7 +94,7 @@ export function AdminUsersList({
             <tr><th>Nama</th><th>Email</th><th>Status</th><th>Peran</th></tr>
           </thead>
           <tbody>
-            {users.map(u => (
+            {pagination.pageItems.map(u => (
               <tr key={u.id}>
                 <td>{u.name}{u.id === me && <span className="m"> (Anda)</span>}</td>
                 <td className="m">{u.email}</td>
@@ -107,6 +119,14 @@ export function AdminUsersList({
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        firstItem={pagination.firstItem}
+        lastItem={pagination.lastItem}
+        totalItems={users.length}
+        onPageChange={pagination.setPage}
+      />
     </section>
   );
 }
@@ -116,14 +136,22 @@ export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> 
   const toast                 = useToast();
   const [pending, start]      = useBusy();
   const [f, setF] = useState({ name: '', email: '', role: 'support' as RoleKey, pw: '' });
+  const [signature, setSignature] = useState<File | null>(null);
+  const [signatureError, setSignatureError] = useState('');
   const set = (k: keyof typeof f, v: string) => setF(prev => ({ ...prev, [k]: v }));
 
   const submit = () => start(async () => {
     if (!currentUser) return;
-    const r = await api.createUser(currentUser, f);
+    if (f.role === 'finance' && !signature) {
+      setSignatureError('Unggah tanda tangan Finance untuk membuat akun Finance.');
+      return;
+    }
+    setSignatureError('');
+    const r = await api.createUser(currentUser, { ...f, signature });
     toast(r.msg, !r.ok);
     if (r.ok) {
       setF({ name: '', email: '', role: 'support', pw: '' });
+      setSignature(null);
       await onCreated();
     }
   });
@@ -132,7 +160,9 @@ export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> 
     <section className="card">
       <h2>Buat akun pegawai</h2>
       <p className="sub">
-        Buat akun pegawai dan tetapkan perannya. Sampaikan kata sandi awal dengan aman kepada pegawai.
+        Buat akun pegawai dan tetapkan perannya. Akun Finance juga memerlukan tanda tangan
+        Finance yang disimpan di S3 dengan referensinya di database. Sampaikan kata sandi
+        awal dengan aman kepada pegawai.
       </p>
       <div className="form">
         <label>
@@ -148,11 +178,28 @@ export function AdminCreateUser({ onCreated }: { onCreated: () => Promise<void> 
         </label>
         <label>
           Peran
-          <select value={f.role} onChange={e => set('role', e.target.value)}>
+          <select value={f.role} onChange={e => {
+            set('role', e.target.value);
+            setSignature(null);
+            setSignatureError('');
+          }}>
             {(Object.keys(ROLE_LABEL) as RoleKey[]).map(k => (
               <option key={k} value={k}>{ROLE_LABEL[k]}</option>
             ))}
           </select>
+        </label>
+        <label>
+          Tanda tangan <small className="m">(wajib untuk Finance; opsional untuk role lain, PNG/JPEG, maksimal 5 MiB)</small>
+          <input
+              key={f.role}
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={e => {
+                setSignature(e.target.files?.[0] ?? null);
+                setSignatureError('');
+              }}
+            />
+            {signatureError && <small className="auth-err" role="alert">{signatureError}</small>}
         </label>
         <label>
           Kata sandi awal <small className="m">(minimal 8 karakter)</small>

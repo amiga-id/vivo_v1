@@ -1,16 +1,22 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { dayDiff, dstr, todayISO } from '@/lib/format';
 import * as svc from '@/lib/services';
 import type { DocSummary, User } from '@/lib/types';
+import { getAuditEvents } from '@/lib/audit-api';
+import type { AuditEvent } from '@/lib/audit-api';
 import AuditFilter from './AuditFilter';
 import Icon from './Icon';
 import { Badge, Due, Empty } from './ui';
 import { store } from '@/lib/store';
+import Pagination from './Pagination';
+import { usePagination } from '@/lib/pagination';
 /* ─────────────────────────────────────────────
    PIC Klien & Intake Support – shared queue
 ───────────────────────────────────────────── */
 export function ClientQueueScreen({ user }: { user: User }) {
   const all  = svc.queueFor(user);
+  const pagination = usePagination(all);
   const byStatus = (s: string) => all.filter(d => d.status === s).length;
   const unpaidTax = all.filter(d =>
     d.status !== 'Disetujui' && d.status !== 'Ditolak' && !d.taxSet).length;
@@ -45,8 +51,16 @@ export function ClientQueueScreen({ user }: { user: User }) {
               Unggah invoice lewat tab Unggah dan pajak.
             </Empty>
           )}
-          {all.map(d => <ClientQueueRow key={d.id} d={d} base={baseUrl} />)}
+          {pagination.pageItems.map(d => <ClientQueueRow key={d.id} d={d} base={baseUrl} />)}
         </div>
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          firstItem={pagination.firstItem}
+          lastItem={pagination.lastItem}
+          totalItems={all.length}
+          onPageChange={pagination.setPage}
+        />
       </section>
     </>
   );
@@ -94,6 +108,7 @@ function ClientQueueRow({ d, base }: { d: DocSummary; base: string }) {
 ───────────────────────────────────────────── */
 export function FinanceQueueScreen({ user }: { user: User }) {
   const rows = svc.queueFor(user);
+  const pagination = usePagination(rows);
   const late = rows.filter(d => dayDiff(d.deadline) <= 0).length;
   return (
     <>
@@ -113,7 +128,7 @@ export function FinanceQueueScreen({ user }: { user: User }) {
               Dokumen yang lolos pemeriksaan robot dan ditugaskan kepada Anda akan muncul di sini.
             </Empty>
           )}
-          {rows.map(d => (
+          {pagination.pageItems.map(d => (
             <div className="q" style={{ gridTemplateColumns: '1.6fr 1.2fr 1fr auto' }} key={d.id}>
               <div><div className="t">{d.no}</div><div className="m">{d.klien}</div></div>
               <div>{d.jenis}</div>
@@ -122,96 +137,16 @@ export function FinanceQueueScreen({ user }: { user: User }) {
             </div>
           ))}
         </div>
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          firstItem={pagination.firstItem}
+          lastItem={pagination.lastItem}
+          totalItems={rows.length}
+          onPageChange={pagination.setPage}
+        />
       </section>
     </>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Service Lead – workload
-───────────────────────────────────────────── */
-export function LeadWorkloadScreen({ user }: { user: User }) {
-  const rows  = svc.workloadFor(user);
-  const fin   = store.users.filter(u => u.role === 'finance' && u.status === 'Aktif');
-  const open  = (d: (typeof rows)[0]) => ['Dalam Review', 'Dikembalikan', 'Diproses'].includes(d.status);
-
-  return (
-    <>
-      <div className="kpis">
-        {fin.map(f => (
-          <div className="kpi" key={f.id}>
-            <b>{rows.filter(d => d.reviewer === f.id && open(d)).length}</b>
-            <span>Tugas terbuka: {f.name}</span>
-          </div>
-        ))}
-        <div className="kpi warn">
-          <b>{rows.filter(d => d.conflict).length}</b>
-          <span>Konflik penugasan</span>
-        </div>
-      </div>
-
-      <section className="card">
-        <h2>Beban kerja tim</h2>
-        <p className="sub">
-          Layar ini hanya memuat status dan penugasan.
-          Nilai transaksi dan isi dokumen tidak dikirim ke peran Anda.
-        </p>
-        <div className="tblw">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Dokumen</th><th>Status</th>
-                <th>Penugasan</th><th>Reviewer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(d => (
-                <tr key={d.id}>
-                  <td><b>{d.no}</b><div className="m">{d.klien}</div></td>
-                  <td><Badge status={d.status} /></td>
-                  <td>{d.conflict
-                    ? <span className="badge s-Konflik">Konflik penugasan</span>
-                    : <span className="m">Aman</span>}
-                  </td>
-                  <td>
-                    {open(d)
-                      ? <LeadReassignSelect docId={d.id} current={d.reviewer} uploader={d.uploader} fin={fin} />
-                      : <span className="m">Selesai</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  );
-}
-
-function LeadReassignSelect({
-  docId, current, uploader, fin,
-}: {
-  docId: string;
-  current: string;
-  uploader: string;
-  fin: { id: string; name: string }[];
-}) {
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    try {
-      const u = store.users.find(x => x.id === fin[0]?.id);
-      if (!u) return;
-      svc.reassign(u, docId, e.target.value);
-    } catch { /* handled upstream */ }
-  };
-  return (
-    <select className="inline" value={current} onChange={handleChange}
-      aria-label="Alihkan reviewer">
-      {fin.map(f => (
-        <option key={f.id} value={f.id} disabled={f.id === uploader}>
-          {f.name}{f.id === uploader ? ' (pengunggah)' : ''}
-        </option>
-      ))}
-    </select>
   );
 }
 
@@ -219,19 +154,43 @@ function LeadReassignSelect({
    Audit (all roles)
 ───────────────────────────────────────────── */
 const AUDIT_SUB: Record<string, string> = {
-  pic:     'Hanya aktivitas pada dokumen order yang masuk lewat Anda.',
-  support: 'Hanya aktivitas pada dokumen yang Anda unggah atau yang dikembalikan ke Intake Support.',
-  finance: 'Hanya aktivitas pada tugas review yang ditugaskan kepada Anda.',
-  lead:    'Hanya catatan penugasan dan beban kerja. Isi dokumen tidak dicatat di sini.',
-  admin:   'Perubahan akun, peran, delegasi, dan upaya akses yang ditolak.',
+  support: 'Aktivitas unggahan, pengajuan, revisi, dan sesi akun Anda.',
+  finance: 'Aktivitas tugas review yang ditugaskan kepada Anda dan sesi akun Anda.',
+  lead: 'Aktivitas pengajuan, penugasan, perubahan vendor, dan sesi akun Anda.',
+  admin: 'Seluruh aktivitas aplikasi yang tercatat di database.',
 };
 
 export function AuditScreen({ user, doc }: { user: User; doc?: string }) {
-  const events = svc.auditFor(user);
-  const ids = [...new Set(events.filter(e => e.d).map(e => e.d))];
-  const showFilter = ['pic', 'support', 'finance'].includes(user.role) && ids.length > 0;
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setEvents(await getAuditEvents());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const ids = [...new Set(events.flatMap(event =>
+    event.entity_type === 'submission' && event.entity_id
+      ? [event.entity_id]
+      : [],
+  ))];
+  const showFilter = ['support', 'finance'].includes(user.role) && ids.length > 0;
   const current = doc && ids.includes(doc) ? doc : 'all';
-  const shown = events.filter(e => current === 'all' || e.d === current);
+  const shown = events.filter(event =>
+    current === 'all' || event.entity_id === current,
+  );
+  const pagination = usePagination(shown, current);
 
   return (
     <section className="card">
@@ -241,28 +200,56 @@ export function AuditScreen({ user, doc }: { user: User; doc?: string }) {
         <AuditFilter
           base={`/${user.role}/audit`}
           current={current}
-          options={ids.map(id => ({ id, label: svc.docLabel(id) }))}
+          options={ids.map(id => ({
+            id,
+            label: events.find(event => event.entity_id === id)?.entity_label ?? id,
+          }))}
         />
       )}
-      {shown.length === 0
-        ? <Empty title="Belum ada aktivitas">Aktivitas di cakupan Anda akan muncul di sini.</Empty>
-        : (
-          <ul className="tl">
-            {shown.map((e, i) => {
-              const docObj = e.d ? store.docs.find(x => x.id === e.d) : null;
-              return (
-                <li key={i} className={e.k === 'security' ? 'sec' : e.bot ? 'bot' : ''}>
-                  <div className="when">
-                    {e.t} oleh {e.a}
-                    {docObj && current === 'all' ? `, ${svc.docLabel(e.d).split(' – ')[0]}` : ''}
-                  </div>
-                  <div className="what">{e.w}</div>
-                  {e.x && <div className="det">{e.x}</div>}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      {error && (
+        <div className="auth-err" role="alert">
+          Gagal memuat riwayat: {error}{' '}
+          <button className="btn sm" type="button" onClick={() => void load()}>
+            Coba lagi
+          </button>
+        </div>
+      )}
+      {loading
+        ? <div className="loading">Memuat riwayat...</div>
+        : error
+          ? null
+          : (
+            shown.length === 0
+              ? <Empty title="Belum ada aktivitas">Aktivitas di cakupan Anda akan muncul di sini.</Empty>
+              : (
+                <ul className="tl">
+                  {pagination.pageItems.map(event => (
+                    <li key={event.id}>
+                      <div className="when">
+                        {new Intl.DateTimeFormat('id-ID', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        }).format(new Date(event.created_at))}
+                        {' '}oleh {event.actor_name}
+                        {event.entity_label ? ` · ${event.entity_label}` : ''}
+                      </div>
+                      <div className="what">{event.action}</div>
+                      {event.detail && <div className="det">{event.detail}</div>}
+                    </li>
+                  ))}
+                </ul>
+              )
+          )}
+      {!loading && !error && (
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          firstItem={pagination.firstItem}
+          lastItem={pagination.lastItem}
+          totalItems={shown.length}
+          onPageChange={pagination.setPage}
+        />
+      )}
     </section>
   );
 }
@@ -272,6 +259,7 @@ export function AuditScreen({ user, doc }: { user: User; doc?: string }) {
 ───────────────────────────────────────────── */
 export function AdminAccessScreen({ user }: { user: User }) {
   const reqs = svc.requestsFor(user);
+  const pagination = usePagination(reqs);
   return (
     <>
       <div className="kpis">
@@ -287,7 +275,7 @@ export function AdminAccessScreen({ user }: { user: User }) {
           ? <Empty title="Tidak ada permintaan">Permintaan akses baru akan muncul di sini.</Empty>
           : (
             <div className="queue">
-              {reqs.map(r => (
+              {pagination.pageItems.map(r => (
                 <div className="q" style={{ gridTemplateColumns: '1fr auto' }} key={r.id}>
                   <div>
                     <div className="t">{r.text}</div>
@@ -307,6 +295,14 @@ export function AdminAccessScreen({ user }: { user: User }) {
               ))}
             </div>
           )}
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          firstItem={pagination.firstItem}
+          lastItem={pagination.lastItem}
+          totalItems={reqs.length}
+          onPageChange={pagination.setPage}
+        />
       </section>
     </>
   );

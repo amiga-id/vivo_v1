@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSession } from '@/lib/session';
 import { getDatabaseAccounts } from '@/lib/auth-api';
-import { createVendor, getVendors } from '@/lib/vendor-api';
+import { createVendor, deleteVendor, getVendors, updateVendor } from '@/lib/vendor-api';
 import {
   getClientAssignments,
   getClients,
@@ -11,15 +11,20 @@ import {
 import type { ClientOption } from '@/lib/document-api';
 import type { User, Vendor } from '@/lib/types';
 import { useToast } from '@/components/Toast';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/lib/pagination';
 
 export default function AdminClients() {
   const { user } = useSession();
   const toast = useToast();
+  const vendorFormRef = useRef<HTMLFormElement>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [intakeSupport, setIntakeSupport] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [supportLoading, setSupportLoading] = useState(true);
   const [pending, setPending] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [deletingVendorId, setDeletingVendorId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [supportError, setSupportError] = useState('');
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -34,6 +39,9 @@ export default function AdminClients() {
     phone_number: '',
     address: '',
   });
+  const clientsPagination = usePagination(clients);
+  const supportPagination = usePagination(intakeSupport);
+  const vendorsPagination = usePagination(vendors);
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -100,14 +108,59 @@ export default function AdminClients() {
     event.preventDefault();
     setPending(true);
     try {
-      await createVendor(form);
+      if (editingVendor) {
+        await updateVendor(editingVendor.id, form);
+      } else {
+        await createVendor(form);
+      }
+      const wasEditing = Boolean(editingVendor);
+      setEditingVendor(null);
       setForm({ name: '', pic: '', email: '', phone_number: '', address: '' });
-      toast('Vendor berhasil ditambahkan ke database.', false);
+      toast(
+        wasEditing ? 'Perubahan vendor berhasil disimpan.' : 'Vendor berhasil ditambahkan ke database.',
+        false,
+      );
       await Promise.all([loadVendors(), loadManagedClients()]);
     } catch (reason) {
       toast(reason instanceof Error ? reason.message : String(reason), true);
     } finally {
       setPending(false);
+    }
+  };
+
+  const editVendor = (vendor: Vendor) => {
+    setEditingVendor(vendor);
+    setForm({
+      name: vendor.name,
+      pic: vendor.pic,
+      email: vendor.email,
+      phone_number: vendor.phone_number ?? '',
+      address: vendor.address ?? '',
+    });
+    vendorFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const cancelVendorEdit = () => {
+    setEditingVendor(null);
+    setForm({ name: '', pic: '', email: '', phone_number: '', address: '' });
+  };
+
+  const removeVendor = async (vendor: Vendor) => {
+    const confirmed = window.confirm(
+      `Hapus vendor "${vendor.name}"? Riwayat pengajuan lama tetap disimpan, tetapi klien ini tidak lagi tersedia untuk pengajuan baru.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingVendorId(vendor.id);
+    try {
+      await deleteVendor(vendor.id);
+      toast('Vendor berhasil dihapus.', false);
+      if (editingVendor?.id === vendor.id) cancelVendorEdit();
+      await Promise.all([loadVendors(), loadManagedClients()]);
+    } catch (reason) {
+      toast(reason instanceof Error ? reason.message : String(reason), true);
+    } finally {
+      setDeletingVendorId(null);
     }
   };
 
@@ -163,12 +216,20 @@ export default function AdminClients() {
                 <tbody>
                   {clients.length === 0 ? (
                     <tr><td style={{ color: '#999' }}>Belum ada vendor di database.</td></tr>
-                  ) : clients.map(client => (
+                  ) : clientsPagination.pageItems.map(client => (
                     <tr key={client.id}><td>{client.name}</td></tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={clientsPagination.page}
+              pageCount={clientsPagination.pageCount}
+              firstItem={clientsPagination.firstItem}
+              lastItem={clientsPagination.lastItem}
+              totalItems={clients.length}
+              onPageChange={clientsPagination.setPage}
+            />
             <h3 style={{ marginTop: 22 }}>Penugasan per Intake Support</h3>
             {supportError && (
               <div className="auth-err" role="alert">
@@ -185,7 +246,7 @@ export default function AdminClients() {
                     ? 'Memuat akun Intake Support...'
                     : 'Belum ada akun Intake Support.'}
                 </div>
-              ) : intakeSupport.map(account => {
+              ) : supportPagination.pageItems.map(account => {
                 const selected = assignmentBySupport[account.id] ?? [];
                 return (
                   <div
@@ -230,16 +291,26 @@ export default function AdminClients() {
                 );
               })}
             </div>
+            <Pagination
+              page={supportPagination.page}
+              pageCount={supportPagination.pageCount}
+              firstItem={supportPagination.firstItem}
+              lastItem={supportPagination.lastItem}
+              totalItems={intakeSupport.length}
+              onPageChange={supportPagination.setPage}
+            />
           </>
         )}
       </section>
 
       <section className="card">
-        <h2>Tambah vendor</h2>
+        <h2>{editingVendor ? 'Edit vendor' : 'Tambah vendor'}</h2>
         <p className="sub">
-          Data disimpan pada database vendor dan digunakan sebagai referensi perusahaan.
+          {editingVendor
+            ? 'Perubahan akan langsung disimpan ke database vendor.'
+            : 'Data disimpan pada database vendor dan digunakan sebagai referensi perusahaan.'}
         </p>
-        <form onSubmit={addVendor}>
+        <form className="vendor-form" ref={vendorFormRef} onSubmit={addVendor}>
           <div className="form">
             <label>
               Nama perusahaan
@@ -296,9 +367,16 @@ export default function AdminClients() {
             </label>
           </div>
           <div className="actions" style={{ marginTop: 16 }}>
-            <button className="btn primary" disabled={pending}>
-              {pending ? 'Menyimpan...' : 'Tambah vendor'}
+            <button className="btn primary" type="submit" disabled={pending}>
+              {pending
+                ? 'Menyimpan...'
+                : editingVendor ? 'Simpan perubahan' : 'Tambah vendor'}
             </button>
+            {editingVendor && (
+              <button className="btn" type="button" disabled={pending} onClick={cancelVendorEdit}>
+                Batal
+              </button>
+            )}
           </div>
         </form>
       </section>
@@ -323,29 +401,57 @@ export default function AdminClients() {
                   <thead>
                     <tr>
                       <th>Perusahaan</th><th>PIC</th><th>Email</th>
-                      <th>Telepon</th><th>Alamat</th>
+                      <th>Telepon</th><th>Alamat</th><th>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {vendors.length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: '#999' }}>
+                        <td colSpan={6} style={{ textAlign: 'center', color: '#999' }}>
                           Belum ada data klien / vendor.
                         </td>
                       </tr>
-                    ) : vendors.map(vendor => (
+                    ) : vendorsPagination.pageItems.map(vendor => (
                       <tr key={vendor.id}>
                         <td><strong>{vendor.name}</strong></td>
                         <td>{vendor.pic}</td>
                         <td className="m">{vendor.email}</td>
                         <td>{vendor.phone_number || <span className="m">-</span>}</td>
                         <td>{vendor.address || <span className="m">-</span>}</td>
+                        <td>
+                          <div className="actions vendor-actions" style={{ margin: 0 }}>
+                            <button
+                              className="btn sm"
+                              type="button"
+                              disabled={pending || deletingVendorId !== null}
+                              onClick={() => editVendor(vendor)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn sm danger"
+                              type="button"
+                              disabled={pending || deletingVendorId !== null}
+                              onClick={() => void removeVendor(vendor)}
+                            >
+                              {deletingVendorId === vendor.id ? 'Menghapus...' : 'Hapus'}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+            <Pagination
+              page={vendorsPagination.page}
+              pageCount={vendorsPagination.pageCount}
+              firstItem={vendorsPagination.firstItem}
+              lastItem={vendorsPagination.lastItem}
+              totalItems={vendors.length}
+              onPageChange={vendorsPagination.setPage}
+            />
           </>
         )}
         {!loading && !error && (

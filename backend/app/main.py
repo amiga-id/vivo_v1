@@ -1,3 +1,4 @@
+import logging
 from asyncio import timeout
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -31,6 +32,7 @@ from app.schemas.health import HealthResponse
 from app.schemas.response import ApiResponse, ErrorDetails
 from app.services.auth import AuthenticationError
 from app.services.health import check_postgres_health
+from app.services.knowledge import seed_repository_knowledge
 
 # safety check to prevent obscure runtime errors later
 env_vars: dict[str, str | None] = {
@@ -38,8 +40,6 @@ env_vars: dict[str, str | None] = {
     "AWS_ACCESS_KEY_ID": settings.AWS_ACCESS_KEY_ID,
     "AWS_SECRET_ACCESS_KEY": settings.AWS_SECRET_ACCESS_KEY,
     "AWS_BEARER_TOKEN_BEDROCK": settings.AWS_BEARER_TOKEN_BEDROCK,
-    "AWS_KNOWLEDGE_BASE_ID": settings.AWS_KNOWLEDGE_BASE_ID,
-    "AWS_KNOWLEDGE_BASE_MODEL_ARN": settings.AWS_KNOWLEDGE_BASE_MODEL_ARN,
 }
 
 for key, val in env_vars.items():
@@ -49,23 +49,28 @@ for key, val in env_vars.items():
 base = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=join(base, "templates"))
 state = {}
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.APP_INIT >= 1:
-        print(" ▕  Initializing database")  # noqa: T201
-
-        try:
-            session = SessionLocal()
+    session = SessionLocal()
+    try:
+        if settings.APP_INIT >= 1:
+            print(" ▕  Initializing database")  # noqa: T201
             if settings.APP_INIT > 1:
-                print(" ▕  Droping tables")  # noqa: T201
-
+                print(" ▕  Dropping tables")  # noqa: T201
             await init_db(session=session, drop_db=settings.APP_INIT > 1)
-        except Exception as ex:
-            print(f"Error initializing database: {ex}")  # noqa: T201
-        finally:
-            await session.close()
+
+        seeded_count = await seed_repository_knowledge(session)
+        await session.commit()
+        if seeded_count:
+            logger.info("Seeded %s repository knowledge documents", seeded_count)
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
     state["start"] = time()
     yield
@@ -92,7 +97,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.APP_FRONTEND_URL],
+    allow_origins=[settings.APP_FRONTEND_URL, "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -64,3 +64,4 @@ async def init_db(session: AsyncSession, drop_db: bool = False) -> None:
             password=settings.APP_SYSTEM_USER_PASSWORD,
             role=app.models.AccountRole.SYSTEM,
         )
+        await session.commit()

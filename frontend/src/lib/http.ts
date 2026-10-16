@@ -1,4 +1,7 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/+$/, '');
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? 'http://127.0.0.1:8000/api/v1' : '/api/v1')
+).replace(/\/+$/, '');
 const TOKEN_KEY = 'amiga_access_token';
 
 export class ApiError extends Error {
@@ -22,7 +25,11 @@ export function clearAccessToken(): void {
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body !== undefined && !headers.has('Content-Type')) {
+  if (
+    init.body !== undefined &&
+    !(typeof FormData !== 'undefined' && init.body instanceof FormData) &&
+    !headers.has('Content-Type')
+  ) {
     headers.set('Content-Type', 'application/json');
   }
 

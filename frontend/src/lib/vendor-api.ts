@@ -51,3 +51,31 @@ export async function createVendor(input: {
   });
   return result.data;
 }
+
+export async function updateVendor(
+  id: string,
+  input: {
+    name: string;
+    pic: string;
+    email: string;
+    phone_number: string;
+    address: string;
+  },
+): Promise<Vendor> {
+  const result = await apiRequest<VendorResponse>(`/vendors/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      ...input,
+      phone_number: input.phone_number || null,
+      address: input.address || null,
+    }),
+  });
+  return result.data;
+}
+
+export async function deleteVendor(id: string): Promise<void> {
+  await apiRequest<{ success: boolean; data: null }>(
+    `/vendors/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+  );
+}

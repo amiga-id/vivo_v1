@@ -43,6 +43,7 @@ from app.schemas.auth import (
     AuthToken,
 )
 from app.schemas.response import PagedRequest
+from app.services.audit import record_audit_event
 
 
 class AuthenticationError(Exception):
@@ -143,8 +144,7 @@ async def create_account(
     )
     session.add(account)
 
-    await session.commit()
-    await session.refresh(account)
+    await session.flush()
 
     return account
 
@@ -173,6 +173,12 @@ async def login_account(
 
     if token is not None:
         account.last_login = datetime.now(UTC)
+        record_audit_event(
+            session,
+            account,
+            entity_type="session",
+            action="Login berhasil",
+        )
         await session.commit()
 
     return token
@@ -184,7 +190,7 @@ async def logout_account(
     await session.execute(
         update(Account).where(Account.id == id).values(last_logout=datetime.now(UTC))
     )
-    await session.commit()
+    await session.flush()
 
 
 async def current_account(
@@ -295,8 +301,7 @@ async def update_account(
 
         setattr(entry, key, value)
 
-    await session.commit()
-    await session.refresh(entry)
+    await session.flush()
 
     return True, from_account(entry)
 
@@ -313,7 +318,7 @@ async def remove_account(
     if entry.is_system:
         return [False, entry]
 
-    session.delete(entry)
-    session.commit()
+    await session.delete(entry)
+    await session.flush()
 
     return [True, entry]

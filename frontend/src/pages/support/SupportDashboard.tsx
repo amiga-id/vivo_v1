@@ -5,6 +5,8 @@ import { getSubmissions } from '@/lib/document-api';
 import type { Submission } from '@/lib/document-api';
 import { STATUSES } from '@/lib/constants';
 import { Badge, Empty } from '@/components/ui';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/lib/pagination';
 
 export default function SupportDashboard() {
   const { user, loading } = useSession();
@@ -28,12 +30,14 @@ export default function SupportDashboard() {
     if (user) void loadSubmissions();
   }, [user, loadSubmissions]);
 
-  if (loading || !user) return <div className="loading">Loading...</div>;
-  const countByStatus = (status: string) =>
-    submissions.filter(submission => submission.status === status).length;
   const filteredSubmissions = statusFilter === 'all'
     ? submissions
     : submissions.filter(submission => submission.status === statusFilter);
+  const pagination = usePagination(filteredSubmissions, statusFilter);
+  const countByStatus = (status: string) =>
+    submissions.filter(submission => submission.status === status).length;
+
+  if (loading || !user) return <div className="loading">Loading...</div>;
 
   return (
     <>
@@ -85,7 +89,7 @@ export default function SupportDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSubmissions.map(submission => (
+                    {pagination.pageItems.map(submission => (
                       <tr key={submission.id}>
                         <td>
                           <div className="t">{submission.request_number}</div>
@@ -94,7 +98,15 @@ export default function SupportDashboard() {
                         <td>{submission.kind}</td>
                         <td><Badge status={submission.status} /></td>
                         <td className="support-submission-action-cell">
-                          {submission.status === 'Disetujui' ? (
+                          {submission.status === 'Ditolak' ? (
+                            <div className="support-rejection-reason">
+                              <b>Alasan ditolak</b>
+                              <span>
+                                {submission.decision_reason?.trim() ||
+                                  'Alasan penolakan belum tersedia.'}
+                              </span>
+                            </div>
+                          ) : submission.status === 'Disetujui' ? (
                             <Link className="btn sm support-submission-action" to="/support/voucher">
                               Unduh Voucher
                             </Link>
@@ -118,6 +130,14 @@ export default function SupportDashboard() {
                 </table>
               </div>
             )}
+            <Pagination
+              page={pagination.page}
+              pageCount={pagination.pageCount}
+              firstItem={pagination.firstItem}
+              lastItem={pagination.lastItem}
+              totalItems={filteredSubmissions.length}
+              onPageChange={pagination.setPage}
+            />
           </>
         )}
       </section>

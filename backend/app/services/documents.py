@@ -29,6 +29,7 @@ from app.schemas.documents import (
     SubmissionResponse,
     UploadedFileData,
 )
+from app.services.audit import record_audit_event
 from app.services.bedrock_service import BedrockInvoiceService, BedrockSettings
 
 MAX_UPLOAD_BYTES = 4_500_000
@@ -162,6 +163,15 @@ async def upload_pdf(
         extraction_status="pending",
     )
     session.add(entry)
+    record_audit_event(
+        session,
+        user,
+        entity_type="upload",
+        entity_id=upload_id,
+        entity_label=file_name,
+        action="File PDF diunggah",
+        detail=f"Ukuran {len(data)} byte.",
+    )
     try:
         await session.commit()
     except Exception as exc:
@@ -380,6 +390,19 @@ async def create_submission(
     )
     session.add(submission)
     await session.flush()
+    record_audit_event(
+        session,
+        user,
+        entity_type="submission",
+        entity_id=submission.id,
+        entity_label=submission.request_number,
+        action=(
+            "Pengajuan revisi dikirim"
+            if revision_parent
+            else "Pengajuan dikirim"
+        ),
+        detail=f"Klien {client.name}; reviewer {reviewer.name}.",
+    )
     if revision_parent:
         session.add(
             RevisionHistory(

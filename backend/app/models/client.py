@@ -85,6 +85,8 @@ class Submission(Base):
     page_count = Column(Integer, nullable=False, default=0)
     grand_total = Column(Numeric(18, 2), nullable=False, default=0)
     tax = Column(JSON, nullable=False, default=list)
+    voucher_number = Column(String(64), nullable=True)
+    voucher_s3_key = Column(String(1024), nullable=True)
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

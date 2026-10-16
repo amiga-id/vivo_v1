@@ -33,6 +33,10 @@ class VendorCreateRequest(BaseModel):
         return value or None
 
 
+class VendorUpdateRequest(VendorCreateRequest):
+    pass
+
+
 class VendorFilterRequest(BaseModel):
     name: str | None = None
     email: str | None = None

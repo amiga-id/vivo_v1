@@ -82,6 +82,39 @@ export interface RevisionHistoryEntry {
   created_at: string;
 }
 
+export type VoucherRole = 'finance';
+
+export interface VoucherSigner {
+  id: string;
+  role: VoucherRole;
+  name: string;
+  account_id: string | null;
+}
+
+export interface VoucherSigners {
+  finance: VoucherSigner[];
+}
+
+export interface VoucherListItem {
+  submission_id: string;
+  request_number: string;
+  voucher_number: string;
+  client_name: string;
+  kind: string;
+  status: string;
+  receive_date: string;
+  grand_total: number;
+  voucher_url: string | null;
+  signature_ids: { finance: string | null };
+  created_at: string;
+}
+
+export interface VoucherGenerateResult {
+  submission_id: string;
+  voucher_number: string;
+  voucher_url: string;
+}
+
 interface ApiEnvelope<T> {
   success: boolean;
   data: T;
@@ -279,4 +312,21 @@ export function decideSubmission(
     method: 'POST',
     body: JSON.stringify({ decision, reason }),
   });
+}
+
+export function getVouchers(): Promise<VoucherListItem[]> {
+  return apiData<VoucherListItem[]>('/documents/vouchers');
+}
+
+export function getVoucherSigners(): Promise<VoucherSigners> {
+  return apiData<VoucherSigners>('/documents/vouchers/signers');
+}
+
+export function generateVoucher(submissionId: string): Promise<VoucherGenerateResult> {
+  return apiData<VoucherGenerateResult>(
+    `/documents/submissions/${encodeURIComponent(submissionId)}/voucher`,
+    {
+      method: 'POST',
+    },
+  );
 }

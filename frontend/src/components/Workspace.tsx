@@ -8,6 +8,7 @@ import Icon from './Icon';
 import NavTabs from './NavTabs';
 import { useToast } from './Toast';
 import { Brand } from './ui';
+import ChatBot from './ChatBot';
 
 export default function Workspace({ user, children }: { user: User; children: ReactNode }) {
   const navigate = useNavigate();
@@ -53,6 +54,7 @@ export default function Workspace({ user, children }: { user: User; children: Re
         </div>
       </main>
       <footer className="workspace-footer">© 2026 AMIGA</footer>
+      <ChatBot user={user} />
     </>
   );
 }

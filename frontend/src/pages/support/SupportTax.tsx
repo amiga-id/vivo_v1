@@ -41,30 +41,30 @@ export function TaxForm({
   const toast            = useToast();
   const [pending, start] = useBusy();
 
-  type Sel = Record<string, { on: boolean; rate: string }>;
-  const [sel, setSel]         = useState<Sel>(() => {
-    const s: Sel = {};
-    TAX_PRESETS.forEach(p => {
-      const sv = taxDoc.tax?.find(t => t.code === p.code);
-      s[p.code] = { on: !!sv, rate: String(sv ? sv.rate : p.rate) };
-    });
-    return s;
-  });
-  const [custom, setCustom]   = useState<TaxLine[]>(
-    (taxDoc.tax ?? []).filter(t => !TAX_PRESETS.some(p => p.code === t.code)),
+  const initialTax = taxDoc.tax?.[0];
+  const initialPreset = TAX_PRESETS.find(p => p.code === initialTax?.code);
+  const [selectedTax, setSelectedTax] = useState(
+    initialTax ? (initialPreset ? initialPreset.code : 'custom') : '',
+  );
+  const [selectedRate, setSelectedRate] = useState(
+    String(initialTax?.rate ?? initialPreset?.rate ?? ''),
+  );
+  const [custom, setCustom] = useState<TaxLine | null>(
+    initialTax && !initialPreset ? initialTax : null,
   );
   const [nc, setNc]           = useState({ label: '', rate: '', kind: 'withhold' as TaxLine['kind'] });
   const [approvers, setApprovers] = useState<1 | 2>(taxDoc.approvers);
   const [ncErr, setNcErr]     = useState('');
 
-  const lines: TaxLine[] = [
-    ...TAX_PRESETS.filter(p => sel[p.code].on).map(p => ({
-      code: p.code, label: p.label,
-      rate: Number(String(sel[p.code].rate).replace(',', '.')),
-      kind: p.kind,
-    })),
-    ...custom,
-  ];
+  const selectedPreset = TAX_PRESETS.find(p => p.code === selectedTax);
+  const lines: TaxLine[] = selectedPreset
+    ? [{
+        code: selectedPreset.code,
+        label: selectedPreset.label,
+        rate: Number(selectedRate.replace(',', '.')),
+        kind: selectedPreset.kind,
+      }]
+    : selectedTax === 'custom' && custom ? [custom] : [];
   const bad = lines.some(l => !isFinite(l.rate) || l.rate <= 0 || l.rate > 100);
   const bd  = computeTaxes(taxDoc.dpp, bad ? [] : lines);
 
@@ -73,7 +73,8 @@ export function TaxForm({
     if (!nc.label.trim()) { setNcErr('Isi nama pajak.'); return; }
     if (!isFinite(rate) || rate <= 0 || rate > 100) { setNcErr('Tarif harus lebih dari 0 dan paling besar 100%.'); return; }
     setNcErr('');
-    setCustom(prev => [...prev, { code: `LAIN${Date.now() % 100000}`, label: nc.label.trim().slice(0, 40), rate, kind: nc.kind }]);
+    setCustom({ code: `LAIN${Date.now() % 100000}`, label: nc.label.trim().slice(0, 40), rate, kind: nc.kind });
+    setSelectedTax('custom');
     setNc({ label: '', rate: '', kind: 'withhold' });
   };
 
@@ -94,58 +95,93 @@ export function TaxForm({
           <span className="m">{taxDoc.no}, {taxDoc.klien}</span>
         </div>
         <p className="sub" style={{ marginTop: 0 }}>
-          Centang pajak yang berlaku untuk invoice ini. Semua dihitung dari DPP.
+          Pilih satu pajak yang berlaku untuk invoice ini. Pajak dihitung dari DPP.
           Tarif adalah nilai awal dan bisa Anda ubah.
         </p>
         <div className="banner info">
           <span>Tarif awal hanya contoh. Pastikan sesuai ketentuan yang berlaku dan konfirmasi ke tim pajak AMIGA bila ragu.</span>
         </div>
 
-        {TAX_PRESETS.map(p => {
-          const x   = sel[p.code];
-          const amt = Math.round(taxDoc.dpp * (Number(String(x.rate).replace(',', '.')) || 0) / 100);
-          return (
-            <div className={`taxrow${x.on ? ' on' : ''}`} key={p.code}>
-              <label className="taxchk">
-                <input type="checkbox" checked={x.on}
-                  onChange={e => setSel(prev => ({ ...prev, [p.code]: { ...prev[p.code], on: e.target.checked } }))} />
-                <span>
-                  <b>{p.label}</b>{' '}
-                  <span className={`tag ${p.kind}`}>{p.kind === 'add' ? 'ditambah' : 'dipotong'}</span>
-                  <small>{p.hint}</small>
-                </span>
-              </label>
-              <label className="rate">
-                <input type="text" inputMode="decimal" value={x.rate} disabled={!x.on}
-                  onChange={e => setSel(prev => ({ ...prev, [p.code]: { ...prev[p.code], rate: e.target.value } }))}
-                  aria-label={`Tarif ${p.label}`} />
-                <span>%</span>
-              </label>
-              <div className="amt">
-                {x.on ? `${p.kind === 'add' ? '+' : '−'} ${rp(amt)}` : ''}
-              </div>
-            </div>
-          );
-        })}
+        {taxDoc.tax && taxDoc.tax.length > 1 && (
+          <div className="banner info">
+            Dokumen ini memiliki beberapa pajak tersimpan. Pilih satu pajak; saat disimpan,
+            hanya pilihan tersebut yang akan digunakan.
+          </div>
+        )}
 
-        {custom.map((c, i) => (
-          <div className="taxrow on" key={c.code}>
+        <label className="tax-select-label">
+          Pajak yang berlaku
+          <select
+            value={selectedTax}
+            onChange={event => {
+              const code = event.target.value;
+              setSelectedTax(code);
+              const preset = TAX_PRESETS.find(item => item.code === code);
+              if (preset) {
+                const savedRate = taxDoc.tax?.find(item => item.code === code)?.rate;
+                setSelectedRate(String(savedRate ?? preset.rate));
+              }
+            }}
+          >
+            <option value="">Tanpa pajak</option>
+            {TAX_PRESETS.map(p => (
+              <option key={p.code} value={p.code}>
+                {p.label} — {p.kind === 'add' ? 'ditambah' : 'dipotong'}
+              </option>
+            ))}
+            {custom && <option value="custom">{custom.label} — pajak lainnya</option>}
+          </select>
+        </label>
+
+        {selectedPreset && (
+          <div className="taxrow on">
             <div className="taxchk">
               <span>
-                <b>{c.label}</b>{' '}
-                <span className={`tag ${c.kind}`}>{c.kind === 'add' ? 'ditambah' : 'dipotong'}</span>
-                <small>Pajak lain, tarif {c.rate}%</small>
+                <b>{selectedPreset.label}</b>
+                <small>{selectedPreset.hint}</small>
               </span>
             </div>
-            <button className="btn sm"
-              onClick={() => setCustom(prev => prev.filter((_, j) => j !== i))}>
+            <label className="rate">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={selectedRate}
+                onChange={event => setSelectedRate(event.target.value)}
+                aria-label={`Tarif ${selectedPreset.label}`}
+              />
+              <span>%</span>
+            </label>
+            <div className="amt">
+              {`${selectedPreset.kind === 'add' ? '+' : '−'} ${rp(
+                Math.round(taxDoc.dpp * (Number(selectedRate.replace(',', '.')) || 0) / 100),
+              )}`}
+            </div>
+          </div>
+        )}
+
+        {selectedTax === 'custom' && custom && (
+          <div className="taxrow on">
+            <div className="taxchk">
+              <span>
+                <b>{custom.label}</b>
+                <small>Pajak lainnya</small>
+              </span>
+            </div>
+            <button
+              className="btn sm"
+              type="button"
+              onClick={() => {
+                setCustom(null);
+                setSelectedTax('');
+              }}
+            >
               Hapus
             </button>
             <div className="amt">
-              {c.kind === 'add' ? '+' : '−'} {rp(Math.round(taxDoc.dpp * c.rate / 100))}
+              {custom.kind === 'add' ? '+' : '−'} {rp(Math.round(taxDoc.dpp * custom.rate / 100))}
             </div>
           </div>
-        ))}
+        )}
 
         <div className="taxadd">
           <b>Pajak lainnya</b>

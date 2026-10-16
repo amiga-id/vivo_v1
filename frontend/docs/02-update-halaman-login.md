@@ -98,7 +98,7 @@ DEMO_PASSWORD=amiga2026
 
 ## Cara menguji
 
-1. Jalankan `npm run dev`, buka `http://localhost:3001`. Anda akan melihat halaman login.
+1. Jalankan `npm run dev`, buka `http://localhost:3000`. Anda akan melihat halaman login.
 2. Masuk sebagai `rina@amiga.demo` / `amiga2026`. Anda masuk ke `/finance`.
 3. Coba kata sandi salah. Pesan galat generik muncul dan kolom kata sandi dikosongkan.
 4. Salah 5 kali untuk satu email. Muncul pesan terkunci beserta sisa detik.

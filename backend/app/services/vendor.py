@@ -1,7 +1,9 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy import (
+    delete,
     func,
     or_,
     select,
@@ -12,10 +14,16 @@ from app.core.db import get_db
 from app.core.paging import resolve_paging
 from app.core.sid import from_uuid
 from app.models.account import Account
-from app.models.client import Client
+from app.models.client import Client, ClientAssignment
 from app.models.vendor import Vendor
 from app.schemas.response import PagedRequest
-from app.schemas.vendor import VendorCreateRequest, VendorFilterRequest, VendorResponse
+from app.schemas.vendor import (
+    VendorCreateRequest,
+    VendorFilterRequest,
+    VendorResponse,
+    VendorUpdateRequest,
+)
+from app.services.audit import record_audit_event
 
 
 def from_vendor(entry: Vendor) -> VendorResponse:
@@ -88,6 +96,78 @@ async def create_vendor(
             created_by=creator.id,
         )
     )
+    await session.flush()
+    record_audit_event(
+        session,
+        creator,
+        entity_type="vendor",
+        entity_id=vendor.id,
+        entity_label=vendor.name,
+        action="Vendor ditambahkan",
+    )
     await session.commit()
     await session.refresh(vendor)
     return from_vendor(vendor)
+
+
+async def update_vendor(
+    session: AsyncSession,
+    vendor_id: UUID,
+    request: VendorUpdateRequest,
+    editor: Account,
+) -> VendorResponse | None:
+    vendor = await session.get(Vendor, vendor_id)
+    if vendor is None:
+        return None
+
+    previous_name = vendor.name
+    vendor.name = request.name
+    vendor.pic = request.pic
+    vendor.email = request.email
+    vendor.phone_number = request.phone_number
+    vendor.address = request.address
+    vendor.updated_by = editor.id
+
+    client = await session.scalar(select(Client).where(Client.vendor_id == vendor.id))
+    if client is not None:
+        client.name = vendor.name
+    record_audit_event(
+        session,
+        editor,
+        entity_type="vendor",
+        entity_id=vendor.id,
+        entity_label=vendor.name,
+        action="Data vendor diperbarui",
+        detail=f"Nama sebelumnya: {previous_name}.",
+    )
+    await session.commit()
+    await session.refresh(vendor)
+    return from_vendor(vendor)
+
+
+async def delete_vendor(
+    session: AsyncSession, vendor_id: UUID, deleter: Account
+) -> bool:
+    vendor = await session.get(Vendor, vendor_id)
+    if vendor is None:
+        return False
+
+    client = await session.scalar(select(Client).where(Client.vendor_id == vendor.id))
+    if client is not None:
+        await session.execute(
+            delete(ClientAssignment).where(ClientAssignment.client_id == client.id)
+        )
+        client.vendor_id = None
+        await session.flush()
+
+    record_audit_event(
+        session,
+        deleter,
+        entity_type="vendor",
+        entity_id=vendor.id,
+        entity_label=vendor.name,
+        action="Vendor dihapus",
+    )
+    await session.delete(vendor)
+    await session.commit()
+    return True

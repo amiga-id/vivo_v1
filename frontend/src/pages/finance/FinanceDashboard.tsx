@@ -5,6 +5,8 @@ import type { Submission } from '@/lib/document-api';
 import { useSession } from '@/lib/session';
 import { STATUSES } from '@/lib/constants';
 import { Badge, Empty } from '@/components/ui';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/lib/pagination';
 
 export default function FinanceDashboard() {
   const { user, loading: sessionLoading } = useSession();
@@ -29,11 +31,13 @@ export default function FinanceDashboard() {
     if (user) void load();
   }, [user, load]);
 
-  if (sessionLoading || !user) return <div className="loading">Loading...</div>;
-  const open = submissions.filter(item => item.status === 'Dalam Review');
   const filteredSubmissions = statusFilter === 'all'
     ? submissions
     : submissions.filter(item => item.status === statusFilter);
+  const pagination = usePagination(filteredSubmissions, statusFilter);
+  const open = submissions.filter(item => item.status === 'Dalam Review');
+
+  if (sessionLoading || !user) return <div className="loading">Loading...</div>;
 
   return (
     <>
@@ -79,7 +83,7 @@ export default function FinanceDashboard() {
               </Empty>
             ) : (
               <div className="queue">
-                {filteredSubmissions.map(item => (
+                {pagination.pageItems.map(item => (
                   <div
                     className="q"
                     key={item.id}
@@ -106,6 +110,14 @@ export default function FinanceDashboard() {
                 ))}
               </div>
             )}
+            <Pagination
+              page={pagination.page}
+              pageCount={pagination.pageCount}
+              firstItem={pagination.firstItem}
+              lastItem={pagination.lastItem}
+              totalItems={filteredSubmissions.length}
+              onPageChange={pagination.setPage}
+            />
           </>
         )}
       </section>

@@ -3,9 +3,13 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
+    File,
+    Form,
     HTTPException,
+    UploadFile,
     status,
 )
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
@@ -25,6 +29,7 @@ from app.schemas.response import (
     PagedRequest,
     PagedResponse,
 )
+from app.services.audit import record_audit_event
 from app.services.auth import (
     AuthenticationError,
     create_account,
@@ -37,6 +42,7 @@ from app.services.auth import (
     remove_account,
     update_account,
 )
+from app.services.voucher_workflow import register_voucher_signature
 
 router = APIRouter(tags=["Auth"], prefix="/auth")
 
@@ -90,6 +96,14 @@ async def create_account_by_admin(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only an administrator can create accounts.",
         )
+    if request.role == "reviewer":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "Akun Finance harus dibuat bersama tanda tangan melalui "
+                "/auth/accounts/create-with-signature."
+            ),
+        )
 
     try:
         account = await create_account(
@@ -104,7 +118,89 @@ async def create_account_by_admin(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
 
+    record_audit_event(
+        session,
+        current_user,
+        entity_type="account",
+        entity_id=account.id,
+        entity_label=account.name,
+        action="Akun pegawai dibuat",
+        detail=f"{account.email} · {account.role.value}.",
+    )
+    await session.commit()
     return ApiResponse(success=True, data=from_account(account))
+
+
+@router.post(
+    "/accounts/create-with-signature",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ApiResponse[AccountResponse],
+    response_model_exclude_none=True,
+)
+async def create_finance_account_by_admin(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[Account, Depends(current_account)],
+    name: Annotated[str, Form()],
+    email: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+    role: Annotated[str, Form()] = "reviewer",
+):
+    if not current_user.is_admin:
+        await file.close()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an administrator can create accounts.",
+        )
+
+    try:
+        try:
+            request = AccountCreateRequest(
+                name=name,
+                email=email,
+                password=password,
+                role=role,
+            )
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=exc.errors(),
+            ) from exc
+
+        try:
+            account = await create_account(
+                session=session,
+                name=request.name,
+                email=request.email,
+                password=request.password,
+                role=AccountRole(request.role),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+            ) from exc
+
+        record_audit_event(
+            session,
+            current_user,
+            entity_type="account",
+            entity_id=account.id,
+            entity_label=account.name,
+            action="Akun pegawai dibuat",
+            detail=f"{account.email} · {request.role}.",
+        )
+        await register_voucher_signature(
+            session,
+            account,
+            file.file,
+            created_by=current_user,
+        )
+        return ApiResponse(success=True, data=from_account(account))
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await file.close()
 
 
 @router.post(
@@ -119,6 +215,13 @@ async def logout(
 ):
     try:
         await logout_account(session, current_user.id)
+        record_audit_event(
+            session,
+            current_user,
+            entity_type="session",
+            action="Logout",
+        )
+        await session.commit()
 
         return ApiResponse[None](success=True)
     except ValueError as exc:
@@ -209,6 +312,7 @@ async def patch_account(
                 detail="You cannot change your own role.",
             )
 
+        previous_account = await find_account(session, id)
         [success, account] = await update_account(session, id, request)
 
         if success and account is None:
@@ -223,6 +327,37 @@ async def patch_account(
                 detail=f"Cannot update account: {id}",
             )
 
+        requested_changes = request.model_dump(exclude_unset=True)
+        changed_fields = [
+            field
+            for field, value in requested_changes.items()
+            if not (field == "role" and value is None)
+            and previous_account is not None
+            and getattr(previous_account, field) != value
+        ]
+        if changed_fields and previous_account is not None and account is not None:
+            role_changed = "role" in changed_fields
+            record_audit_event(
+                session,
+                current_user,
+                entity_type="account",
+                entity_id=to_uuid(id),
+                entity_label=account.name,
+                action=(
+                    "Peran akun diperbarui"
+                    if role_changed
+                    else "Data akun diperbarui"
+                ),
+                detail=(
+                    f"Bidang diperbarui: {', '.join(changed_fields)}."
+                    + (
+                        f" Peran: {previous_account.role} → {account.role}."
+                        if role_changed
+                        else ""
+                    )
+                ),
+            )
+        await session.commit()
         return ApiResponse[AccountResponse](success=True, data=account)
     except ValueError as exc:
         raise HTTPException(
@@ -245,6 +380,7 @@ async def delete_account(
         if not current_user.is_admin:
             raise AuthenticationError("Unauthorized")
 
+        account = await find_account(session, id)
         [success, _] = await remove_account(session, id)
 
         if not success:
@@ -253,6 +389,17 @@ async def delete_account(
                 detail=f"Cannot delete account: {id}",
             )
 
+        if account is not None:
+            record_audit_event(
+                session,
+                current_user,
+                entity_type="account",
+                entity_id=to_uuid(id),
+                entity_label=account.name,
+                action="Akun pegawai dihapus",
+                detail=f"{account.email} · {account.role}.",
+            )
+            await session.commit()
         return ApiResponse[None](success=True)
     except ValueError as exc:
         raise HTTPException(

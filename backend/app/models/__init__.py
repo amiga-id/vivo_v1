@@ -9,8 +9,11 @@ from app.models.client import (
     Submission,
     UploadedFile,
 )
+from app.models.lead_audit import LeadAuditEvent
+from app.models.knowledge import KnowledgeDocument
 from app.models.metric import Metric
 from app.models.vendor import Vendor
+from app.models.voucher import VoucherSignature, VoucherSigner
 
 __all__ = [
     "Account",
@@ -18,8 +21,12 @@ __all__ = [
     "Client",
     "ClientAssignment",
     "Metric",
+    "LeadAuditEvent",
+    "KnowledgeDocument",
     "RevisionHistory",
     "Submission",
     "UploadedFile",
     "Vendor",
+    "VoucherSignature",
+    "VoucherSigner",
 ]

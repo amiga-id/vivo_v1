@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
 import ToastProvider from '@/components/Toast';
-import ChatBot       from '@/components/ChatBot';
 
 import HomePage  from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -72,9 +71,6 @@ export default function App() {
           <Route path="audit"    element={<AdminAudit />} />
         </Route>
       </Routes>
-
-      {/* Global floating chatbot */}
-      <ChatBot />
     </ToastProvider>
   );
 }

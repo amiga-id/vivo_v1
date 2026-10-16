@@ -8,7 +8,7 @@ Provides:
 Telegram bot runs as a background task via python-telegram-bot.
 
 Run the application API from the repository root:
-  uv run --directory backend fastapi dev --port 8001
+  uv run --directory backend uvicorn app.main:app --reload --port 8000
 """
 import os
 import json
@@ -26,6 +26,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from app.api.main import router as application_api_router  # noqa: E402
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("amiga")
 
@@ -33,7 +35,7 @@ log = logging.getLogger("amiga")
 AWS_REGION       = os.getenv("AWS_REGION", "ap-southeast-1")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 TELEGRAM_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN", "")
-FRONTEND_ORIGIN  = os.getenv("FRONTEND_ORIGIN", "http://localhost:3001")
+FRONTEND_ORIGIN  = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 
 # ── Bedrock client ──────────────────────────────────────────
 try:
@@ -178,11 +180,13 @@ app = FastAPI(title="AMIGA Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN, "http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[FRONTEND_ORIGIN, "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(application_api_router, prefix="/api")
 
 
 # ── Models ───────────────────────────────────────────────────

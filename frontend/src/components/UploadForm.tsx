@@ -179,7 +179,7 @@ export default function UploadForm({ home }: { home: string }) {
         setReceiveDate(source.receive_date);
         setNote(source.note ?? '');
         setApprovers(source.approvers === 2 ? 2 : 1);
-        setTax(source.tax.flatMap(line => {
+        const revisedTax = source.tax.flatMap((line): TaxLine[] => {
           const code = typeof line.code === 'string' ? line.code : '';
           const preset = TAX_PRESETS.find(item => item.code === code);
           if (!preset) return [];
@@ -189,7 +189,8 @@ export default function UploadForm({ home }: { home: string }) {
             rate: typeof line.rate === 'number' ? line.rate : preset.rate,
             kind: line.kind === 'withhold' ? 'withhold' : 'add',
           }];
-        }));
+        }).slice(0, 1);
+        setTax(revisedTax);
       } catch (error) {
         if (active) {
           setRevisionSource(null);
@@ -342,12 +343,14 @@ export default function UploadForm({ home }: { home: string }) {
     }
   };
 
-  const toggleTax = (code: string, enabled: boolean) => {
+  const selectTax = (code: string) => {
+    if (!code) {
+      setTax([]);
+      return;
+    }
     const preset = TAX_PRESETS.find(item => item.code === code);
     if (!preset) return;
-    setTax(current => enabled
-      ? [...current, { code: preset.code, label: preset.label, rate: preset.rate, kind: preset.kind }]
-      : current.filter(item => item.code !== code));
+    setTax([{ code: preset.code, label: preset.label, rate: preset.rate, kind: preset.kind }]);
   };
 
   const clearForm = () => {
@@ -561,20 +564,19 @@ export default function UploadForm({ home }: { home: string }) {
 
           <section className="card">
             <h2>Pajak yang berlaku</h2>
-            <p className="sub">Pengaturan pajak ini disertakan bersama pengajuan.</p>
-            <div className="form">
+            <p className="sub">Pilih satu pajak untuk disertakan bersama pengajuan.</p>
+            <select
+              aria-label="Pajak yang berlaku"
+              value={tax[0]?.code ?? ''}
+              onChange={event => selectTax(event.target.value)}
+            >
+              <option value="">Tanpa pajak</option>
               {TAX_PRESETS.map(preset => (
-                <label key={preset.code} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={tax.some(item => item.code === preset.code)}
-                    onChange={event => toggleTax(preset.code, event.target.checked)}
-                  />
-                  <span>{preset.label} ({preset.rate}%)</span>
-                  <small className="m">{preset.kind === 'add' ? 'ditambahkan' : 'dipotong'}</small>
-                </label>
+                <option key={preset.code} value={preset.code}>
+                  {preset.label} ({preset.rate}%) — {preset.kind === 'add' ? 'ditambahkan' : 'dipotong'}
+                </option>
               ))}
-            </div>
+            </select>
             {readyCount > 0 && (
               <p className="sub" style={{ marginTop: 16 }}>
                 Nilai invoice terdeteksi: <b>{rp(rows.reduce((sum, row) => sum + (row.data?.grand_total ?? 0), 0))}</b>
