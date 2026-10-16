@@ -74,20 +74,27 @@ export default function ChatBot({ user }: { user: User }) {
     setThinking(true);
 
     try {
-      const result = await apiRequest<ApiEnvelope<AskResponse>>('/rag/ask-agent', {
+      // const result = await apiRequest<ApiEnvelope<AskResponse>>('/rag/ask-agent', {
+      //   method: 'POST',
+      //   body: JSON.stringify({
+      //     messages: updatedMessages
+      //       .filter(message => message.role === 'user' || message.role === 'assistant')
+      //       .slice(-12)
+      //       .map(({ role, content }) => ({ role, content })),
+      //   }),
+      // });
+
+      const result = await apiRequest<ApiEnvelope<AskResponse>>('/ask', {
         method: 'POST',
-        body: JSON.stringify({
-          messages: updatedMessages
-            .filter(message => message.role === 'user' || message.role === 'assistant')
-            .slice(-12)
-            .map(({ role, content }) => ({ role, content })),
-        }),
+        body: JSON.stringify({ prompt }),
       });
       setMessages(current => [
         ...current,
         {
           role: 'assistant',
-          content: result.data.reply,
+          content: typeof result.data.reply === 'string'
+            ? result.data.reply
+            : JSON.stringify(result.data.reply),
           ts: Date.now(),
           toolsUsed: result.data.tools_used,
           sources: result.data.knowledge_sources,
@@ -132,7 +139,7 @@ export default function ChatBot({ user }: { user: User }) {
             {messages.map((message, index) => (
               <div key={`${message.ts}-${index}`} className={`chat-msg ${message.role}`}>
                 <div className="chat-bubble">
-                  {message.content.split('\n').map((line, lineIndex) => (
+                  {message.content?.split('\n').map((line, lineIndex) => (
                     <p key={lineIndex} style={{ margin: '2px 0' }}>{line}</p>
                   ))}
                   {message.role === 'assistant' && (message.sources || message.toolsUsed?.length) ? (
@@ -184,7 +191,7 @@ export default function ChatBot({ user }: { user: User }) {
               autoFocus
             />
             <button type="submit" className="btn primary" disabled={!input.trim() || thinking}>
-              Kirim
+              Kirim Saja Semuanya
             </button>
           </form>
         </div>

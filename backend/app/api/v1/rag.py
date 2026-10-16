@@ -51,7 +51,7 @@ class SQLAskRequest(BaseModel):
 
 class SQLAskResponse(BaseModel):
     query: str
-    result: Any
+    reply: Any
 
 
 @lru_cache(maxsize=1)
@@ -350,7 +350,7 @@ async def query_database_with_llm(
             value = [dict(row) for row in rows.mappings().all()]
         return ApiResponse[SQLAskResponse](
             success=True,
-            data=SQLAskResponse(query=response.data, result=value),
+            data=SQLAskResponse(query=response.data, reply=value),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
