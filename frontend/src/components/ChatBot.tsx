@@ -191,7 +191,7 @@ export default function ChatBot({ user }: { user: User }) {
               autoFocus
             />
             <button type="submit" className="btn primary" disabled={!input.trim() || thinking}>
-              Kirim Saja Semuanya
+              Kirim
             </button>
           </form>
         </div>
